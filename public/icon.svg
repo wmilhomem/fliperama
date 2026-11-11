@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#030712"/>
+  <rect x="24" y="24" width="464" height="464" rx="72" fill="none" stroke="#EF4444" stroke-width="12" stroke-opacity="0.8"/>
+  
+  <!-- Arcade Cabinet Screen Frame -->
+  <rect x="76" y="80" width="360" height="240" rx="24" fill="#090D16" stroke="#06B6D4" stroke-width="8"/>
+  
+  <!-- Screen Glow and Scanlines -->
+  <rect x="92" y="96" width="328" height="208" rx="16" fill="#020617"/>
+  <path d="M 92 140 L 420 140 M 92 180 L 420 180 M 92 220 L 420 220 M 92 260 L 420 260" stroke="#06B6D4" stroke-width="2" stroke-opacity="0.25"/>
+  
+  <!-- Retro Pixel Character / Mascot on screen -->
+  <rect x="236" y="140" width="40" height="20" fill="#EF4444"/>
+  <rect x="228" y="160" width="56" height="40" fill="#2563EB"/>
+  <rect x="232" y="150" width="48" height="18" fill="#FCD34D"/>
+  <rect x="248" y="154" width="8" height="8" fill="#000000"/>
+  <rect x="220" y="200" width="24" height="24" fill="#78350F"/>
+  <rect x="268" y="200" width="24" height="24" fill="#78350F"/>
+
+  <!-- Control Deck -->
+  <path d="M 60 350 L 452 350 L 420 440 L 92 440 Z" fill="#1E293B" stroke="#FACC15" stroke-width="6"/>
+
+  <!-- Arcade Joystick -->
+  <circle cx="160" cy="380" r="18" fill="#475569"/>
+  <rect x="156" y="340" width="8" height="40" fill="#94A3B8"/>
+  <circle cx="160" cy="335" r="22" fill="#EF4444" stroke="#DC2626" stroke-width="4"/>
+
+  <!-- Action Buttons -->
+  <circle cx="280" cy="390" r="16" fill="#FACC15" stroke="#EAB308" stroke-width="4"/>
+  <circle cx="330" cy="375" r="16" fill="#06B6D4" stroke="#0891B2" stroke-width="4"/>
+  <circle cx="380" cy="390" r="16" fill="#10B981" stroke="#059669" stroke-width="4"/>
+</svg>

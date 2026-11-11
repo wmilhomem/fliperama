@@ -1,0 +1,6 @@
+{
+  "name": "Salve a Hannah - Arcade Retrô",
+  "description": "Jogo de plataforma arcade retrô estilo anos 80 onde Zeca deve subir a construção para salvar Hannah do temível Grotão.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
