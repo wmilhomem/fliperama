@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ALTURA, LARGURA, Y_NAVE } from './constantes';
+import { ALTURA_MUNDO, LARGURA_MUNDO, Y_NAVE } from './constantes';
 import { RNG, TAU } from './semente';
 import { limitarXNaSecao, telaY } from './rio';
 import { DisparoInimigo, Inimigo, Nave, SecaoRio, TipoInimigo } from './tipos';
@@ -37,7 +37,7 @@ export function criarInimigo(
   let vx = 0;
 
   if (tipo === 'garca') {
-    vx = x < LARGURA / 2 ? 62 + rng() * 24 : -(62 + rng() * 24);
+    vx = x < LARGURA_MUNDO / 2 ? 62 + rng() * 24 : -(62 + rng() * 24);
   }
 
   return {
@@ -107,7 +107,7 @@ export function atualizarInimigo(
     inimigo.y < 4 ||
     inimigo.y > Y_NAVE - 46 ||
     inimigo.x < -12 ||
-    inimigo.x > LARGURA + 12
+    inimigo.x > LARGURA_MUNDO + 12
   ) {
     return null;
   }
@@ -126,9 +126,9 @@ export function atualizarInimigo(
 
 export function inimigoForaDaTela(inimigo: Inimigo): boolean {
   return (
-    inimigo.y > ALTURA + 55 ||
+    inimigo.y > ALTURA_MUNDO + 55 ||
     inimigo.x < -42 ||
-    inimigo.x > LARGURA + 42 ||
+    inimigo.x > LARGURA_MUNDO + 42 ||
     inimigo.d < -260
   );
 }

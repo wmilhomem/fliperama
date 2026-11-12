@@ -8,7 +8,7 @@ import {
   COMPRIMENTO_SECAO_BASE,
   EXTRA_RIO,
   INICIO_RIO,
-  LARGURA,
+  LARGURA_MUNDO,
   LARGURA_RIO_MAX,
   LARGURA_RIO_MIN,
   PASSO_RIO,
@@ -65,11 +65,15 @@ export function criarSecao(numero: number, semente: number): SecaoRio {
     );
 
     const centroBase =
-      LARGURA / 2 +
+      LARGURA_MUNDO / 2 +
       Math.sin(d * 0.012 + faseCentroA) * amplitudeCentro +
       Math.sin(d * 0.028 + faseCentroB) * amplitudeCentro * 0.38;
 
-    const centro = clamp(centroBase, largura / 2 + 8, LARGURA - largura / 2 - 8);
+    const centro = clamp(
+      centroBase,
+      largura / 2 + 8,
+      LARGURA_MUNDO - largura / 2 - 8
+    );
     const esquerda = centro - largura / 2;
     const direita = centro + largura / 2;
 

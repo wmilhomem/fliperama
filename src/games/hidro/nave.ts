@@ -4,8 +4,9 @@
  */
 
 import {
-  ALTURA,
+  ALTURA_MUNDO,
   DURACAO_INVULNERAVEL,
+  LARGURA_MUNDO,
   VELOCIDADE_NAVE,
   Y_NAVE,
 } from './constantes';
@@ -53,9 +54,9 @@ export function atualizarNave(
   nave.inclinacao += (alvoInclinacao - nave.inclinacao) * Math.min(1, dt * 11);
   nave.x += direcao * VELOCIDADE_NAVE * dt;
   nave.x = limitarXNaSecao(secao, progresso, nave.x, nave.raio + 1);
-  nave.x = clamp(nave.x, nave.raio + 3, 224 - nave.raio - 3);
+  nave.x = clamp(nave.x, nave.raio + 3, LARGURA_MUNDO - nave.raio - 3);
   nave.y = Y_NAVE;
   nave.timerTiro = Math.max(0, nave.timerTiro - dt);
   nave.invulneravel = Math.max(0, nave.invulneravel - dt);
-  nave.y = clamp(nave.y, 0, ALTURA);
+  nave.y = clamp(nave.y, 0, ALTURA_MUNDO);
 }

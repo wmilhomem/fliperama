@@ -4,11 +4,12 @@
  */
 
 import {
-  ALTURA,
+  ALTURA_MUNDO,
   ALERTA_COMBUSTIVEL,
+  BLOCO_MUNDO,
   FUEL_MAX,
   FUEL_TANQUE,
-  LARGURA,
+  LARGURA_MUNDO,
   Y_NAVE,
 } from './constantes';
 import { distanciaNaTela, obterAmostra, obterFaixasNavegaveis, telaY } from './rio';
@@ -27,10 +28,6 @@ import {
 
 const FONTE = '"Press Start 2P", monospace';
 
-function corAgua(d: number, tempo: number): string {
-  return (Math.floor(d / 12) + Math.floor(tempo * 2.5)) % 2 === 0 ? '#0B6E88' : '#0A6380';
-}
-
 export function desenharRio(
   g: CanvasRenderingContext2D,
   secao: SecaoRio,
@@ -38,35 +35,40 @@ export function desenharRio(
   tempo: number
 ): void {
   g.fillStyle = '#052E1D';
-  g.fillRect(0, 0, LARGURA, ALTURA);
+  g.fillRect(0, 0, LARGURA_MUNDO, ALTURA_MUNDO);
 
-  for (let y = 0; y < ALTURA; y += 2) {
-    const d = distanciaNaTela(y, progresso);
+  for (let y = 0; y < ALTURA_MUNDO; y += BLOCO_MUNDO) {
+    const d = distanciaNaTela(y + BLOCO_MUNDO / 2, progresso);
     const amostra = obterAmostra(secao, d);
     const esquerda = Math.floor(amostra.esquerda);
     const direita = Math.ceil(amostra.direita);
 
     g.fillStyle = '#8F7B4F';
-    g.fillRect(esquerda - 2, y, 2, 2);
-    g.fillRect(direita, y, 2, 2);
+    g.fillRect(esquerda - 2, y, 2, BLOCO_MUNDO);
+    g.fillRect(direita, y, 2, BLOCO_MUNDO);
 
-    g.fillStyle = corAgua(d, tempo);
-    g.fillRect(esquerda, y, Math.max(0, direita - esquerda), 2);
+    g.fillStyle = '#0A6A84';
+    g.fillRect(esquerda, y, Math.max(0, direita - esquerda), BLOCO_MUNDO);
 
     g.fillStyle = 'rgba(165, 243, 252, 0.34)';
-    g.fillRect(esquerda, y, 1, 2);
-    g.fillRect(direita - 1, y, 1, 2);
+    g.fillRect(esquerda, y, 1, BLOCO_MUNDO);
+    g.fillRect(direita - 1, y, 1, BLOCO_MUNDO);
 
     if (amostra.ilhaLargura > 0.5) {
       const ilhaEsquerda = Math.floor(amostra.centro - amostra.ilhaLargura / 2);
       const ilhaDireita = Math.ceil(amostra.centro + amostra.ilhaLargura / 2);
 
       g.fillStyle = '#8F7B4F';
-      g.fillRect(ilhaEsquerda - 1, y, 1, 2);
-      g.fillRect(ilhaDireita, y, 1, 2);
+      g.fillRect(ilhaEsquerda - 1, y, 1, BLOCO_MUNDO);
+      g.fillRect(ilhaDireita, y, 1, BLOCO_MUNDO);
 
       g.fillStyle = '#0A4A2D';
-      g.fillRect(ilhaEsquerda, y, Math.max(1, ilhaDireita - ilhaEsquerda), 2);
+      g.fillRect(
+        ilhaEsquerda,
+        y,
+        Math.max(1, ilhaDireita - ilhaEsquerda),
+        BLOCO_MUNDO
+      );
 
       g.fillStyle = '#137A48';
       if (Math.floor(d / 8) % 3 === 0) {
@@ -87,7 +89,7 @@ function desenharOndas(
   g.lineWidth = 1;
 
   for (let i = 0; i < 30; i++) {
-    const y = (i * 43 + progresso * 0.85 + tempo * 16) % ALTURA;
+    const y = (i * 43 + progresso * 0.85 + tempo * 16) % ALTURA_MUNDO;
     const d = distanciaNaTela(y, progresso);
     const faixas = obterFaixasNavegaveis(secao, d, 3);
 
@@ -113,7 +115,7 @@ export function desenharDecoracoes(
 ): void {
   for (const decoracao of decoracoes) {
     const y = telaY(decoracao.d, progresso);
-    if (y < -14 || y > ALTURA + 12) continue;
+    if (y < -14 || y > ALTURA_MUNDO + 12) continue;
 
     const x = Math.floor(decoracao.x);
     const yy = Math.floor(y);
@@ -526,7 +528,7 @@ export function desenharCombustivel(
   tempo: number
 ): void {
   const x = 9;
-  const y = ALTURA - 17;
+  const y = ALTURA_MUNDO - 17;
   const largura = 108;
   const altura = 8;
   const proporcao = clamp(combustivel / FUEL_MAX, 0, 1);
@@ -569,7 +571,7 @@ export function desenharTitulo(
   const pulso = 0.55 + 0.45 * Math.sin(tempo * 2.8);
 
   g.fillStyle = 'rgba(2, 23, 17, 0.7)';
-  g.fillRect(0, 0, LARGURA, ALTURA);
+  g.fillRect(0, 0, LARGURA_MUNDO, ALTURA_MUNDO);
 
   g.textAlign = 'center';
 
@@ -577,12 +579,12 @@ export function desenharTitulo(
   g.shadowColor = '#06B6D4';
   g.shadowBlur = 20 * pulso;
   g.font = `bold 34px ${FONTE}`;
-  g.fillText('HIDRO', LARGURA / 2, 72);
+  g.fillText('HIDRO', LARGURA_MUNDO / 2, 72);
 
   g.fillStyle = '#22C55E';
   g.shadowColor = '#16A34A';
   g.font = `12px ${FONTE}`;
-  g.fillText('RIO ABAIXO', LARGURA / 2, 94);
+  g.fillText('RIO ABAIXO', LARGURA_MUNDO / 2, 94);
   g.shadowBlur = 0;
 
   g.strokeStyle = 'rgba(103, 232, 249, 0.45)';
@@ -597,20 +599,20 @@ export function desenharTitulo(
 
   g.font = `7px ${FONTE}`;
   g.fillStyle = '#E0F2FE';
-  g.fillText('SETAS / WASD: DESVIAR', LARGURA / 2, 142);
-  g.fillText('CIMA: ACELERAR  BAIXO: FREAR', LARGURA / 2, 156);
-  g.fillText('A / ESPAÇO: ATIRAR', LARGURA / 2, 170);
+  g.fillText('SETAS / WASD: DESVIAR', LARGURA_MUNDO / 2, 142);
+  g.fillText('CIMA: ACELERAR  BAIXO: FREAR', LARGURA_MUNDO / 2, 156);
+  g.fillText('A / ESPAÇO: ATIRAR', LARGURA_MUNDO / 2, 170);
   g.fillStyle = '#FDE68A';
-  g.fillText('ABASTEÇA NOS TANQUES DO RIO', LARGURA / 2, 188);
+  g.fillText('ABASTEÇA NOS TANQUES DO RIO', LARGURA_MUNDO / 2, 188);
 
   g.fillStyle = '#94A3B8';
   g.font = `7px ${FONTE}`;
-  g.fillText(`RECORDE ${recorde.toLocaleString('pt-BR')}`, LARGURA / 2, 213);
+  g.fillText(`RECORDE ${recorde.toLocaleString('pt-BR')}`, LARGURA_MUNDO / 2, 213);
 
   g.fillStyle = `rgba(253, 230, 138, ${0.4 + 0.6 * pulso})`;
   g.font = `7px ${FONTE}`;
-  g.fillText('PRESSIONE AÇÃO', LARGURA / 2, 239);
-  g.fillText('PARA COMEÇAR', LARGURA / 2, 250);
+  g.fillText('PRESSIONE AÇÃO', LARGURA_MUNDO / 2, 226);
+  g.fillText('PARA COMEÇAR', LARGURA_MUNDO / 2, 237);
 
   g.textAlign = 'left';
 }
@@ -624,19 +626,19 @@ export function desenharAviso(
   const pulso = 0.6 + 0.4 * Math.sin(tempo * 4);
 
   g.fillStyle = 'rgba(2, 15, 23, 0.68)';
-  g.fillRect(0, 0, LARGURA, ALTURA);
+  g.fillRect(0, 0, LARGURA_MUNDO, ALTURA_MUNDO);
 
   g.textAlign = 'center';
   g.font = `bold 17px ${FONTE}`;
   g.fillStyle = `rgba(103, 232, 249, ${pulso})`;
   g.shadowColor = '#06B6D4';
   g.shadowBlur = 16;
-  g.fillText(titulo, LARGURA / 2, ALTURA / 2 - 8);
+  g.fillText(titulo, LARGURA_MUNDO / 2, ALTURA_MUNDO / 2 - 8);
   g.shadowBlur = 0;
 
   g.font = `7px ${FONTE}`;
   g.fillStyle = '#E0F2FE';
-  g.fillText(subtitulo, LARGURA / 2, ALTURA / 2 + 17);
+  g.fillText(subtitulo, LARGURA_MUNDO / 2, ALTURA_MUNDO / 2 + 17);
   g.textAlign = 'left';
 }
 
@@ -646,6 +648,6 @@ export function desenharAvisoNave(g: CanvasRenderingContext2D, tempo: number): v
   g.textAlign = 'center';
   g.font = `8px ${FONTE}`;
   g.fillStyle = '#FDE68A';
-  g.fillText('PRONTO!', LARGURA / 2, Y_NAVE - 34);
+  g.fillText('PRONTO!', LARGURA_MUNDO / 2, Y_NAVE - 34);
   g.textAlign = 'left';
 }

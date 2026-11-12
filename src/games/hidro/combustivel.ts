@@ -4,7 +4,7 @@
  */
 
 import {
-  ALTURA,
+  ALTURA_MUNDO,
   DRENAGEM_ACELERANDO,
   DRENAGEM_BASE,
   DRENAGEM_DESACELERANDO,
@@ -32,7 +32,9 @@ export function atualizarTanques(tanques: Tanque[], progresso: number): Tanque[]
     tanque.y = telaY(tanque.d, progresso);
   }
 
-  return tanques.filter((tanque) => tanque.y < ALTURA + 45 && tanque.restante > 0);
+  return tanques.filter(
+    (tanque) => tanque.y < ALTURA_MUNDO + 45 && tanque.restante > 0
+  );
 }
 
 export function drenarCombustivel(

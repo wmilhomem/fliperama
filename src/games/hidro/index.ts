@@ -6,15 +6,20 @@
 import { EngineContext, GameInstance, GameModule, InputState } from '../../engine/types';
 import {
   ALTURA,
+  ALTURA_MUNDO,
   ALERTA_COMBUSTIVEL,
   AUMENTO_SCROLL_SECAO,
   DURACAO_INVULNERAVEL,
   DURACAO_MORTE,
   DURACAO_TRANSICAO,
+  ESCALA,
   FUEL_MAX,
   INTERVALO_VIDA_EXTRA,
   LARGURA,
+  LARGURA_MUNDO,
   MAX_TIROS_JOGADOR,
+  OFFSET_X,
+  OFFSET_Y,
   MULT_ACELERANDO,
   MULT_DESACELERANDO,
   PONTOS_BARREIRA,
@@ -74,8 +79,8 @@ export const hidroGameModule: GameModule = {
   descricao: 'Voe sobre o rio, destrua barreiras e abasteça antes que acabe o combustível.',
   genero: 'Tiro vertical',
   corTema: '#14B8A6',
-  largura: 224,
-  altura: 256,
+  largura: 480,
+  altura: 560,
   instrucoes: {
     historia:
       'Você pilota um hidroavião pelos rios da floresta. Desvie das margens, das pedras e dos troncos, enfrente lanchas, helicópteros e drones, e destrua a barreira ao fim de cada trecho. Fique de olho no combustível: tanques flutuantes podem salvar a viagem.',
@@ -262,7 +267,7 @@ export const hidroGameModule: GameModule = {
       let x: number;
 
       if (tipo === 'garca') {
-        x = rngSpawn() < 0.5 ? -10 : LARGURA + 10;
+        x = rngSpawn() < 0.5 ? -10 : LARGURA_MUNDO + 10;
       } else {
         x = xNavegavel(secaoRio, d, rngSpawn, 11);
       }
@@ -655,44 +660,69 @@ export const hidroGameModule: GameModule = {
       desenhar(g: CanvasRenderingContext2D) {
         const progressoVisual = estado === 'titulo' ? tempo * 20 : progresso;
 
+        g.fillStyle = '#021A13';
+        g.fillRect(0, 0, LARGURA, ALTURA);
+
+        g.save();
+        g.translate(OFFSET_X, OFFSET_Y);
+        g.scale(ESCALA, ESCALA);
+        g.beginPath();
+        g.rect(0, 0, LARGURA_MUNDO, ALTURA_MUNDO);
+        g.clip();
+
         desenharRio(g, secaoRio, progressoVisual, tempo);
         desenharDecoracoes(g, cenario, progressoVisual);
 
         if (estado === 'titulo') {
           desenharTitulo(g, recorde, tempo);
-          return;
+        } else {
+          desenharObstaculos(g, obstaculos);
+          desenharTanques(g, tanques, tempo);
+          desenharInimigos(g, inimigos, tempo);
+
+          if (barreira.hp > 0) {
+            desenharBarreira(g, barreira, tempo);
+          }
+
+          desenharNave(g, nave, tempo, estado !== 'morrendo');
+          desenharTiros(g, tiros);
+          desenharParticulas(g, particulas);
+          desenharCombustivel(g, combustivel, tempo);
+
+          if (
+            estado === 'jogando' &&
+            nave.invulneravel > DURACAO_INVULNERAVEL - 0.75
+          ) {
+            desenharAvisoNave(g, tempo);
+          }
+
+          if (estado === 'transicao') {
+            desenharAviso(
+              g,
+              `TRECHO ${secaoNumero} CONCLUÍDO`,
+              'PREPARE-SE PARA O PRÓXIMO TRECHO',
+              tempo
+            );
+          }
         }
 
-        desenharObstaculos(g, obstaculos);
-        desenharTanques(g, tanques, tempo);
-        desenharInimigos(g, inimigos, tempo);
+        g.restore();
 
-        if (barreira.hp > 0) {
-          desenharBarreira(g, barreira, tempo);
-        }
+        g.strokeStyle = '#0F766E';
+        g.lineWidth = 2;
+        g.strokeRect(
+          OFFSET_X - 1,
+          OFFSET_Y - 1,
+          LARGURA_MUNDO * ESCALA + 2,
+          ALTURA_MUNDO * ESCALA + 2
+        );
 
-        desenharNave(g, nave, tempo, estado !== 'morrendo');
-        desenharTiros(g, tiros);
-        desenharParticulas(g, particulas);
+        if (estado !== 'titulo') {
+          ctx.hud.desenharHUD(g, LARGURA, ALTURA);
 
-        ctx.hud.desenharHUD(g, LARGURA, ALTURA);
-        desenharCombustivel(g, combustivel, tempo);
-
-        if (estado === 'jogando' && nave.invulneravel > DURACAO_INVULNERAVEL - 0.75) {
-          desenharAvisoNave(g, tempo);
-        }
-
-        if (estado === 'transicao') {
-          desenharAviso(
-            g,
-            `TRECHO ${secaoNumero} CONCLUÍDO`,
-            'PREPARE-SE PARA O PRÓXIMO TRECHO',
-            tempo
-          );
-        }
-
-        if (estado === 'gameover') {
-          ctx.hud.desenharGameOver(g, LARGURA, ALTURA, 'PRESSIONE AÇÃO / TOQUE');
+          if (estado === 'gameover') {
+            ctx.hud.desenharGameOver(g, LARGURA, ALTURA, 'PRESSIONE AÇÃO / TOQUE');
+          }
         }
       },
 

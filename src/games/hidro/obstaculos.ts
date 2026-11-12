@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ALTURA } from './constantes';
+import { ALTURA_MUNDO } from './constantes';
 import { telaY } from './rio';
 import { Obstaculo, TipoObstaculo } from './tipos';
 
@@ -44,7 +44,7 @@ export function atualizarObstaculos(
     obstaculo.rotacao += obstaculo.velRotacao * dt;
   }
 
-  return obstaculos.filter((obstaculo) => obstaculo.y < ALTURA + 45);
+  return obstaculos.filter((obstaculo) => obstaculo.y < ALTURA_MUNDO + 45);
 }
 
 export function intervaloSpawnObstaculo(secao: number): number {

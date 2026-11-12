@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ALTURA, LARGURA, VELOCIDADE_TIRO } from './constantes';
+import { ALTURA_MUNDO, LARGURA_MUNDO, VELOCIDADE_TIRO } from './constantes';
 import { Nave, Tiro } from './tipos';
 
 export function criarTiroJogador(nave: Nave, id: number): Tiro {
@@ -49,9 +49,9 @@ export function atualizarTiros(tiros: Tiro[], dt: number): Tiro[] {
     return (
       tiro.vida > 0 &&
       tiro.y > -20 &&
-      tiro.y < ALTURA + 20 &&
+      tiro.y < ALTURA_MUNDO + 20 &&
       tiro.x > -20 &&
-      tiro.x < LARGURA + 20
+      tiro.x < LARGURA_MUNDO + 20
     );
   });
 }

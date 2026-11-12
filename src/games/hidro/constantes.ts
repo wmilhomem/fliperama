@@ -3,8 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export const LARGURA = 224;
-export const ALTURA = 256;
+/** Resolução lógica do canvas, alinhada aos demais jogos amplos. */
+export const LARGURA = 480;
+export const ALTURA = 560;
+
+/** Escala inteira aplicada ao mundo (pixel art nítida, sem borrões). */
+export const ESCALA = 2;
+export const OFFSET_X = 16;
+export const OFFSET_Y = 48;
+
+/**
+ * Mundo lógico em blocos de 8x8, renderizado em 16x16 pixels.
+ * Grade de 28 colunas x 31 linhas = 448x496 px dentro do canvas 480x560.
+ */
+export const LARGURA_MUNDO = 224;
+export const ALTURA_MUNDO = 248;
+export const BLOCO_MUNDO = 8;
 
 export const Y_NAVE = 198;
 export const Y_BARREIRA = 70;
