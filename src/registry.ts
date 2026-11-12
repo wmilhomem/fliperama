@@ -14,6 +14,7 @@ import { raliGameModule } from './games/rali';
 import { selvaGameModule } from './games/selva';
 import { auroraGameModule } from './games/aurora';
 import { cheiaGameModule } from './games/cheia';
+import { minaGameModule } from './games/mina';
 
 /**
  * REGISTRO CENTRAL DE JOGOS DO FLIPERAMA
@@ -32,6 +33,7 @@ export const JOGOS: GameModule[] = [
   raliGameModule,
   auroraGameModule,
   cheiaGameModule,
+  minaGameModule,
   modeloGameModule,
 ];
 
