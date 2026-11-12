@@ -33,6 +33,7 @@ import {
   Rollover,
   Slingshot,
   Spinner,
+  Trilho,
 } from './tipos';
 
 /** Cria o estado de runtime de todos os elementos da mesa. */
@@ -407,6 +408,20 @@ export function detectarOutlane(
   estado.aceso = true;
   estado.animacao = 1;
   return true;
+}
+
+/** Sensor de passagem por um trilho/arco (não bloqueia a bola). */
+export function detectarTrilho(
+  bola: Bola,
+  elemento: Trilho
+): boolean {
+  return bolaSobreRetangulo(
+    bola,
+    elemento.x - elemento.largura / 2,
+    elemento.y - elemento.altura / 2,
+    elemento.largura,
+    elemento.altura
+  );
 }
 
 /** Dreno: a bola chegou ao fim. */

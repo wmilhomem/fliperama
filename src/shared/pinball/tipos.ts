@@ -187,6 +187,20 @@ export interface PortaoMaoUnica extends BaseElemento {
   largura: number;
 }
 
+/**
+ * Trilho / arco (sensor de passagem).
+ *
+ * Não bloqueia a bola: avisa toda vez que ela atravessa a região
+ * (ex.: um arco-rampa em órbita).
+ */
+export interface Trilho extends BaseElemento {
+  tipo: 'trilho';
+  x: number;
+  y: number;
+  largura: number;
+  altura: number;
+}
+
 export type ElementoMesa =
   | BumperPop
   | Slingshot
@@ -198,7 +212,8 @@ export type ElementoMesa =
   | Outlane
   | Plunger
   | Dreno
-  | PortaoMaoUnica;
+  | PortaoMaoUnica
+  | Trilho;
 
 /** Estado de runtime de um bumper. */
 export interface EstadoBumper {
@@ -364,6 +379,8 @@ export interface RegrasMesa {
   aoRollover?(elemento: Rollover, ctx: ContextoRegra): void;
   aoPistasCompletas?(ctx: ContextoRegra): void;
   aoSpinner?(elemento: Spinner, ctx: ContextoRegra): void;
+  /** A bola atravessou um trilho/arco (ex.: arco em órbita). */
+  aoTrilho?(elemento: Trilho, ctx: ContextoRegra): void;
   aoInlane?(elemento: Inlane, ctx: ContextoRegra): void;
   aoOutlane?(elemento: Outlane, ctx: ContextoRegra): void;
   aoDreno?(ctx: ContextoRegra): void;

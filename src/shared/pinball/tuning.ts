@@ -119,7 +119,7 @@ export const BALL_SAVE_PADRAO = 10;
 export const TEMPO_AVISO_BOLA_SALVA = 3;
 
 /* ------------------------------------------------------------------ */
-/* ANTI-TRAVAMENTO                                                     */
+/* IMPULSO ANTI-TRAVAMENTO                                              */
 /* ------------------------------------------------------------------ */
 
 /** Tempo parado (sem movimento) até o empurrão anti-travamento. */
@@ -130,3 +130,160 @@ export const VELOCIDADE_PARADA = 14;
 
 /** Impulso aplicado quando a bola fica parada por muito tempo. */
 export const IMPULSO_ANTI_TRAVA = 80;
+
+/* ------------------------------------------------------------------ */
+/* MEDIDAS COMPARTILHADAS DO CAMPO (todas as mesas usam estas)         */
+/* ------------------------------------------------------------------ */
+
+/** Resolução lógica padrão do gabinete de pinball (proporção 576:800). */
+export const LARGURA = 576;
+
+/** Altura lógica do gabinete. */
+export const ALTURA = 800;
+
+/** Altura do painel de placar (vidro traseiro). */
+export const PAINEL_ALTURA = 96;
+
+/** Parede externa esquerda do campo. */
+export const PAREDE_ESQUERDA = 8;
+
+/** Borda direita do campo principal de jogo. */
+export const CAMPO_DIREITA = 528;
+
+/** Parede divisória entre o campo e a pista do plunger. */
+export const DIVISORIA = 536;
+
+/** Borda direita da pista do plunger (32 px de pista útil). */
+export const PISTA_DIREITA = 568;
+
+/** Centro da pista do plunger (onde a bola fica no lançador). */
+export const PISTA_CENTRO = (DIVISORIA + PISTA_DIREITA) / 2;
+
+/** Teto do campo de jogo. */
+export const TOPO_CAMPO = 104;
+
+/** Raio do canto arredondado do alto do campo (esquerda). */
+export const CANTO_RAIO = 40;
+
+/** Altura do portão de mão única na saída da pista do plunger. */
+export const ALTURA_PORTAO = 156;
+
+/** Topo da parede divisória (abaixo do portão). */
+export const TOPO_DIVISORIA = 160;
+
+/** Profundidade da canaleta do lançador. */
+export const BASE_LANCADOR_Y = 740;
+
+/** Topo da zona do dreno. */
+export const DRENO_Y = 768;
+
+/* ------------------------------------------------------------------ */
+/* FLIPPERS (geometria padrão, compartilhada por todas as mesas)        */
+/* ------------------------------------------------------------------ */
+
+/** Pivô do flipper esquerdo. */
+export const FLIPPER_PIVO_ESQUERDO_X = 168;
+
+/** Pivô do flipper direito. */
+export const FLIPPER_PIVO_DIREITO_X = 368;
+
+/** Altura dos pivôs. */
+export const FLIPPER_PIVO_Y = 720;
+
+/** Comprimento do flipper (pivô até a ponta). */
+export const FLIPPER_COMPRIMENTO = 88;
+
+/** Espessura na base do flipper (16 px). */
+export const FLIPPER_ESPESSURA_BASE = 16;
+
+/** Espessura na ponta do flipper (8 px). */
+export const FLIPPER_ESPESSURA_PONTA = 8;
+
+/** Ângulo de repouso: 28° abaixo da horizontal. */
+export const FLIPPER_ANGULO_REPOUSO = (28 * Math.PI) / 180;
+
+/** Ângulo ativo: 28° acima da horizontal. */
+export const FLIPPER_ANGULO_ATIVO = (-28 * Math.PI) / 180;
+
+/**
+ * Vão entre as pontas dos flippers em repouso (centro a centro).
+ * Valor calculado a partir dos pivôs/comprimento/ângulo (~44 px).
+ */
+export const VAO_FLIPPERS =
+  FLIPPER_PIVO_DIREITO_X -
+  FLIPPER_PIVO_ESQUERDO_X -
+  2 * FLIPPER_COMPRIMENTO * Math.cos(FLIPPER_ANGULO_REPOUSO);
+
+/* ------------------------------------------------------------------ */
+/* FUNIL INFERIOR (inlanes e outlanes, compartilhado)                   */
+/* ------------------------------------------------------------------ */
+
+/** Largura do canal de outlane (entre a parede externa e a guia do inlane). */
+export const LARGURA_OUTLANE = 28;
+
+/** Posição X da guia do outlane esquerdo. */
+export const GUIA_OUTLANE_ESQUERDA = PAREDE_ESQUERDA + LARGURA_OUTLANE;
+
+/** Posição X da guia do outlane direito. */
+export const GUIA_OUTLANE_DIREITA = CAMPO_DIREITA - LARGURA_OUTLANE;
+
+/** Altura do ponto onde o outlane se separa do inlane (formam um "V"). */
+export const ALTURA_V_FUNIL = 656;
+
+/** Profundidade da guia do outlane (leva ao dreno). */
+export const BASE_GUIA_OUTLANE = 760;
+
+/** Sensores dos canais (inlane e outlane) na parte de baixo. */
+export const INLANE_ESQUERDA = { x: 92, y: 690, largura: 40, altura: 40 };
+export const OUTLANE_ESQUERDA = { x: 26, y: 690, largura: 20, altura: 40 };
+export const INLANE_DIREITA = { x: 444, y: 690, largura: 40, altura: 40 };
+export const OUTLANE_DIREITA = { x: 510, y: 690, largura: 20, altura: 40 };
+
+/**
+ * Slingshots padrão: triângulos de borracha apoiados nas guias de inlane,
+ * com a face de chute voltada para o centro do campo.
+ */
+export const SLINGSHOTS = [
+  {
+    id: 'slingshot_esq',
+    vertices: [
+      { x: 82, y: 678 },
+      { x: 150, y: 610 },
+      { x: 148, y: 710 },
+    ],
+  },
+  {
+    id: 'slingshot_dir',
+    vertices: [
+      { x: 454, y: 678 },
+      { x: 386, y: 610 },
+      { x: 388, y: 710 },
+    ],
+  },
+] as const;
+
+/** Força de chute padrão das slingshots (moderada, sempre para o centro). */
+export const FORCA_SLINGSHOT = 190;
+
+/** Pontuação padrão de um slingshot. */
+export const PONTOS_SLINGSHOT = 10;
+
+/* ------------------------------------------------------------------ */
+/* REGIÕES DE DRENO (contador do modo debug)                            */
+/* ------------------------------------------------------------------ */
+
+/** Região central: a bola saiu entre os flippers (bom jogo). */
+export const REGIAO_CENTRO = { x: 190, y: 700, largura: 160, altura: 100 };
+
+/** Outlane esquerda. */
+export const REGIAO_OUTLANE_ESQUERDA = { x: 8, y: 700, largura: 40, altura: 100 };
+
+/** Outlane direita. */
+export const REGIAO_OUTLANE_DIREITA = { x: 496, y: 700, largura: 40, altura: 100 };
+
+/* ------------------------------------------------------------------ */
+/* LANÇADOR                                                             */
+/* ------------------------------------------------------------------ */
+
+/** Força máxima do lançador (leva a bola até o topo do campo). */
+export const FORCA_LANCADOR = 1180;

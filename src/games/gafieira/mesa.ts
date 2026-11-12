@@ -6,8 +6,9 @@
 /**
  * Definição por dados da mesa "Noite na Gafieira".
  *
- * Geometria do campo, elementos, luzes e regras. Tudo original.
- * Os números vêm de `tuning.ts`.
+ * A parte de baixo do campo (moldura, funil, flippers, sensores, lançador,
+ * portão e dreno) vem da biblioteca compartilhada (`criarFundoPadrao`).
+ * Aqui ficam apenas os elementos do salão e as regras.
  */
 
 import {
@@ -16,6 +17,7 @@ import {
   ElementoMesa,
   Parede,
 } from '../../shared/pinball';
+import { criarFundoPadrao } from '../../shared/pinball/fundo';
 import {
   desenharBolaGafieira,
   desenharCamadaEstatica,
@@ -25,98 +27,15 @@ import {
 } from './arte';
 import * as T from './tuning';
 
-/** Paredes do campo (em coordenadas absolutas do canvas). */
-const GEOMETRIA: Parede[] = [
-  // Teto do salão (do canto arredondado até a pista do plunger)
-  {
-    tipo: 'segmento',
-    x1: T.PAREDE_ESQUERDA + T.CANTO_RAIO,
-    y1: T.TOPO_CAMPO,
-    x2: T.PISTA_DIREITA,
-    y2: T.TOPO_CAMPO,
-  },
-  // Canto superior esquerdo arredondado: devolve a bola para o centro
-  {
-    tipo: 'arco',
-    cx: T.PAREDE_ESQUERDA + T.CANTO_RAIO,
-    cy: T.TOPO_CAMPO + T.CANTO_RAIO,
-    raio: T.CANTO_RAIO,
-    anguloInicio: Math.PI,
-    anguloFim: (3 * Math.PI) / 2,
-    sentido: 1,
-    interno: true,
-  },
-  // Parede externa esquerda
-  {
-    tipo: 'segmento',
-    x1: T.PAREDE_ESQUERDA,
-    y1: T.TOPO_CAMPO + T.CANTO_RAIO,
-    x2: T.PAREDE_ESQUERDA,
-    y2: 790,
-  },
-  // Parede interna da pista do plunger (face do divisor)
-  {
-    tipo: 'segmento',
-    x1: T.DIVISORIA,
-    y1: T.TOPO_DIVISORIA,
-    x2: T.DIVISORIA,
-    y2: 790,
-  },
-  // Parede externa da pista do plunger
-  { tipo: 'segmento', x1: T.PISTA_DIREITA, y1: T.TOPO_CAMPO, x2: T.PISTA_DIREITA, y2: 790 },
-  // Guia do outlane esquerdo (canal de 28 px junto à parede)
-  {
-    tipo: 'segmento',
-    x1: T.GUIA_OUTLANE_ESQUERDA,
-    y1: T.ALTURA_V_FUNIL,
-    x2: T.GUIA_OUTLANE_ESQUERDA,
-    y2: T.BASE_GUIA_OUTLANE,
-  },
-  // Guia do inlane esquerdo (funil até o pivô do flipper)
-  {
-    tipo: 'segmento',
-    x1: T.GUIA_OUTLANE_ESQUERDA,
-    y1: T.ALTURA_V_FUNIL,
-    x2: T.FLIPPER_PIVO_ESQUERDO_X,
-    y2: T.FLIPPER_PIVO_Y,
-  },
-  // Guia do outlane direito
-  {
-    tipo: 'segmento',
-    x1: T.GUIA_OUTLANE_DIREITA,
-    y1: T.ALTURA_V_FUNIL,
-    x2: T.GUIA_OUTLANE_DIREITA,
-    y2: T.BASE_GUIA_OUTLANE,
-  },
-  // Guia do inlane direito
-  {
-    tipo: 'segmento',
-    x1: T.GUIA_OUTLANE_DIREITA,
-    y1: T.ALTURA_V_FUNIL,
-    x2: T.FLIPPER_PIVO_DIREITO_X,
-    y2: T.FLIPPER_PIVO_Y,
-  },
+/** Paredes próprias da mesa (o resto vem do fundo padrão). */
+const GEOMETRIA_PROPRIA: Parede[] = [
   // Guias do canal do pandeiro (spinner)
   { tipo: 'segmento', x1: T.SPINNER_GUIA_X[0], y1: T.SPINNER_GUIA_TOPO, x2: T.SPINNER_GUIA_X[0], y2: T.SPINNER_GUIA_BASE },
   { tipo: 'segmento', x1: T.SPINNER_GUIA_X[1], y1: T.SPINNER_GUIA_TOPO, x2: T.SPINNER_GUIA_X[1], y2: T.SPINNER_GUIA_BASE },
-  // Arestas sólidas dos slingshots (o chute é tratado pelo elemento)
-  ...T.SLINGSHOTS.flatMap((slingshot) =>
-    slingshot.vertices.map((vertice, indice) => {
-      const proximo = slingshot.vertices[(indice + 1) % 3];
-      return {
-        tipo: 'segmento' as const,
-        x1: vertice.x,
-        y1: vertice.y,
-        x2: proximo.x,
-        y2: proximo.y,
-        restituicao: 0.42,
-      };
-    })
-  ),
 ];
 
-/** Elementos da mesa. */
-const ELEMENTOS: ElementoMesa[] = [
+/** Elementos próprios do salão. */
+const ELEMENTOS_PROPRIOS: ElementoMesa[] = [
   // Bumpers de pop (tamborins) em triângulo
   ...T.BUMPERS.map((bumper, indice) => ({
     id: `tamborim${indice + 1}`,
@@ -175,86 +94,11 @@ const ELEMENTOS: ElementoMesa[] = [
     altura: T.SPINNER_ALTURA,
     pontos: T.PONTOS_SPINNER,
   },
-
-  // Slingshots (face de chute virada para o centro do campo)
-  ...T.SLINGSHOTS.map((slingshot) => ({
-    id: slingshot.id,
-    tipo: 'slingshot' as const,
-    vertices: slingshot.vertices.map((vertice) => ({ x: vertice.x, y: vertice.y })) as [
-      { x: number; y: number },
-      { x: number; y: number },
-      { x: number; y: number },
-    ],
-    forca: T.FORCA_SLINGSHOT,
-    pontos: T.PONTOS_SLINGSHOT,
-    faceChute: 0,
-  })),
-
-  // Inlanes e outlanes
-  {
-    id: 'inlane_esq',
-    tipo: 'inlane',
-    x: T.INLANE_ESQUERDA.x,
-    y: T.INLANE_ESQUERDA.y,
-    largura: T.INLANE_ESQUERDA.largura,
-    altura: T.INLANE_ESQUERDA.altura,
-    lado: 'esquerda',
-  },
-  {
-    id: 'outlane_esq',
-    tipo: 'outlane',
-    x: T.OUTLANE_ESQUERDA.x,
-    y: T.OUTLANE_ESQUERDA.y,
-    largura: T.OUTLANE_ESQUERDA.largura,
-    altura: T.OUTLANE_ESQUERDA.altura,
-    lado: 'esquerda',
-  },
-  {
-    id: 'inlane_dir',
-    tipo: 'inlane',
-    x: T.INLANE_DIREITA.x,
-    y: T.INLANE_DIREITA.y,
-    largura: T.INLANE_DIREITA.largura,
-    altura: T.INLANE_DIREITA.altura,
-    lado: 'direita',
-  },
-  {
-    id: 'outlane_dir',
-    tipo: 'outlane',
-    x: T.OUTLANE_DIREITA.x,
-    y: T.OUTLANE_DIREITA.y,
-    largura: T.OUTLANE_DIREITA.largura,
-    altura: T.OUTLANE_DIREITA.altura,
-    lado: 'direita',
-  },
-
-  // Lançador, portão de mão única e dreno
-  {
-    id: 'plunger',
-    tipo: 'plunger',
-    x: T.PISTA_CENTRO,
-    y: T.BASE_LANCADOR_Y,
-    comprimento: 44,
-    forcaMax: T.FORCA_LANCADOR,
-  },
-  {
-    id: 'portao',
-    tipo: 'portao',
-    x: T.DIVISORIA,
-    y: T.ALTURA_PORTAO,
-    largura: T.PISTA_DIREITA - T.DIVISORIA,
-  },
-  {
-    id: 'dreno',
-    tipo: 'dreno',
-    x: T.PAREDE_ESQUERDA,
-    y: T.DRENO_Y,
-    largura: T.CAMPO_DIREITA - T.PAREDE_ESQUERDA,
-    altura: T.ALTURA - T.DRENO_Y,
-  },
 ];
 
 export function criarMesaGafieira(): DefinicaoMesa {
+  const fundo = criarFundoPadrao();
+
   return {
     id: 'gafieira',
     titulo: 'Noite na Gafieira',
@@ -266,35 +110,10 @@ export function criarMesaGafieira(): DefinicaoMesa {
     bolasPorPartida: 3,
     multiplicadorMaximo: 5,
     ballSave: { segundos: 10, mensagem: 'BOLA SALVA' },
-    regioesDreno: [
-      { id: 'centro', rotulo: 'CENTRO', ...T.REGIAO_CENTRO },
-      { id: 'outlane_esq', rotulo: 'OUTLANE E', ...T.REGIAO_OUTLANE_ESQUERDA },
-      { id: 'outlane_dir', rotulo: 'OUTLANE D', ...T.REGIAO_OUTLANE_DIREITA },
-    ],
-    geometria: GEOMETRIA,
-    elementos: ELEMENTOS,
-    flippers: [
-      {
-        lado: 'esquerda',
-        pivoX: T.FLIPPER_PIVO_ESQUERDO_X,
-        pivoY: T.FLIPPER_PIVO_Y,
-        comprimento: T.FLIPPER_COMPRIMENTO,
-        raio: T.FLIPPER_ESPESSURA_BASE / 2,
-        raioPonta: T.FLIPPER_ESPESSURA_PONTA / 2,
-        anguloRepouso: T.FLIPPER_ANGULO_REPOUSO,
-        anguloAtivo: T.FLIPPER_ANGULO_ATIVO,
-      },
-      {
-        lado: 'direita',
-        pivoX: T.FLIPPER_PIVO_DIREITO_X,
-        pivoY: T.FLIPPER_PIVO_Y,
-        comprimento: T.FLIPPER_COMPRIMENTO,
-        raio: T.FLIPPER_ESPESSURA_BASE / 2,
-        raioPonta: T.FLIPPER_ESPESSURA_PONTA / 2,
-        anguloRepouso: Math.PI - T.FLIPPER_ANGULO_REPOUSO,
-        anguloAtivo: Math.PI - T.FLIPPER_ANGULO_ATIVO,
-      },
-    ],
+    regioesDreno: fundo.regioesDreno,
+    geometria: [...fundo.geometria, ...GEOMETRIA_PROPRIA],
+    elementos: [...ELEMENTOS_PROPRIOS, ...fundo.elementos],
+    flippers: fundo.flippers,
     luzes: [
       { id: 'tilt', rotulo: 'TILT', x: 402, y: 52 },
       { id: 'gameOver', rotulo: 'FIM', x: 452, y: 52 },

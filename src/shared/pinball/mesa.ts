@@ -45,6 +45,7 @@ import {
   detectarOutlane,
   detectarRollover,
   detectarSpinner,
+  detectarTrilho,
   desenharElementoPadrao,
   resetarElementos,
 } from './elementos';
@@ -539,6 +540,13 @@ export function criarJogoPinball(
             const estadoCanal = estado as EstadoCanal;
             if (detectarInlane(bola, elemento, estadoCanal) && podeDisparar(elemento.id, 0.3)) {
               tabela.regras.aoInlane?.(elemento, contextoRegra);
+            }
+            break;
+          }
+          case 'trilho': {
+            if (detectarTrilho(bola, elemento) && podeDisparar(elemento.id, 0.5)) {
+              if (elemento.pontos) contextoRegra.pontuar(elemento.pontos);
+              tabela.regras.aoTrilho?.(elemento, contextoRegra);
             }
             break;
           }
