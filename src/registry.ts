@@ -10,6 +10,7 @@ import { modeloGameModule } from './games/_modelo';
 import { tatuGameModule } from './games/tatu';
 import { garimpoGameModule } from './games/garimpo';
 import { hidroGameModule } from './games/hidro';
+import { raliGameModule } from './games/rali';
 import { selvaGameModule } from './games/selva';
 
 /**
@@ -26,6 +27,7 @@ export const JOGOS: GameModule[] = [
   garimpoGameModule,
   hidroGameModule,
   selvaGameModule,
+  raliGameModule,
   modeloGameModule,
 ];
 
