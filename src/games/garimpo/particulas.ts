@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { ESCALA, escalar } from './escala';
 import { Nave, Particula } from './tipos';
 import { aleatorio, TAU } from './vetor';
 
@@ -16,7 +17,7 @@ export function criarExplosao(
 ): void {
   for (let i = 0; i < quantidade; i++) {
     const angulo = aleatorio(0, TAU);
-    const velocidade = aleatorio(forca * 0.2, forca);
+    const velocidade = aleatorio(forca * 0.2, forca) * ESCALA;
     const vida = aleatorio(0.28, 0.7);
 
     particulas.push({
@@ -27,15 +28,15 @@ export function criarExplosao(
       vida,
       maxVida: vida,
       cor,
-      comprimento: aleatorio(3, 9),
+      comprimento: aleatorio(escalar(3), escalar(9)),
     });
   }
 }
 
 export function criarFaiscaPropulsor(particulas: Particula[], nave: Nave): void {
   const angulo = nave.angulo + Math.PI + aleatorio(-0.35, 0.35);
-  const velocidade = aleatorio(55, 110);
-  const distancia = 8;
+  const velocidade = aleatorio(escalar(55), escalar(110));
+  const distancia = escalar(8);
   const vida = aleatorio(0.12, 0.26);
 
   particulas.push({
@@ -46,7 +47,7 @@ export function criarFaiscaPropulsor(particulas: Particula[], nave: Nave): void 
     vida,
     maxVida: vida,
     cor: Math.random() < 0.4 ? '#FEF08A' : '#FB923C',
-    comprimento: aleatorio(2, 6),
+    comprimento: aleatorio(escalar(2), escalar(6)),
   });
 }
 

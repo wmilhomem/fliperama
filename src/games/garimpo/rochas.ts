@@ -4,6 +4,7 @@
  */
 
 import { AudioPreset } from '../../engine/types';
+import { escalar, MARGEM_LATERAL, MARGEM_TOPO } from './escala';
 import { Rocha, TamanhoRocha } from './tipos';
 import { aleatorio, aplicarWrap, TAU } from './vetor';
 
@@ -19,31 +20,31 @@ interface ConfigRocha {
 
 export const CONFIG_ROCHAS: Record<TamanhoRocha, ConfigRocha> = {
   grande: {
-    raio: 17,
+    raio: escalar(17),
     pontos: 20,
     fragmentos: ['media', 'media'],
     chanceCristal: 0.25,
     cor: '#94A3B8',
     som: 'rochaGrande',
-    particulas: 16,
+    particulas: 24,
   },
   media: {
-    raio: 10.5,
+    raio: escalar(10.5),
     pontos: 50,
     fragmentos: ['pequena', 'pequena'],
     chanceCristal: 0.5,
     cor: '#67E8F9',
     som: 'rochaMedia',
-    particulas: 11,
+    particulas: 16,
   },
   pequena: {
-    raio: 6.5,
+    raio: escalar(6.5),
     pontos: 100,
     fragmentos: [],
     chanceCristal: 0.8,
     cor: '#A7F3D0',
     som: 'rochaPequena',
-    particulas: 7,
+    particulas: 10,
   },
 };
 
@@ -64,8 +65,8 @@ export function criarRocha(
   tamanho: TamanhoRocha,
   x: number,
   y: number,
-  vx = aleatorio(-26, 26),
-  vy = aleatorio(-26, 26)
+  vx = aleatorio(escalar(-26), escalar(26)),
+  vy = aleatorio(escalar(-26), escalar(26))
 ): Rocha {
   return {
     id: proximoId++,
@@ -99,16 +100,16 @@ export function criarRochasFase(
     let melhorY = centroY;
     let melhorDistancia = -1;
 
-    for (let tentativa = 0; tentativa < 30; tentativa++) {
-      const x = aleatorio(24, largura - 24);
-      const y = aleatorio(30, altura - 24);
+    for (let tentativa = 0; tentativa < 40; tentativa++) {
+      const x = aleatorio(MARGEM_LATERAL, largura - MARGEM_LATERAL);
+      const y = aleatorio(MARGEM_TOPO, altura - MARGEM_LATERAL);
       const distCentro = Math.hypot(x - centroX, y - centroY);
 
       const longeDasOutras = rochas.every(
-        (r) => Math.hypot(x - r.x, y - r.y) > r.raio + CONFIG_ROCHAS.grande.raio + 8
+        (r) => Math.hypot(x - r.x, y - r.y) > r.raio + CONFIG_ROCHAS.grande.raio + 12
       );
 
-      const distanciaValida = distCentro > 58 && longeDasOutras;
+      const distanciaValida = distCentro > escalar(58) && longeDasOutras;
 
       if (distanciaValida) {
         melhorX = x;
@@ -139,7 +140,7 @@ export function dividirRocha(rocha: Rocha): Rocha[] {
 
   return fragmentos.map((tamanho) => {
     const angulo = aleatorio(0, TAU);
-    const impulso = aleatorio(26, 58);
+    const impulso = aleatorio(escalar(26), escalar(58));
     const deslocamento = rocha.raio * 0.55;
 
     return criarRocha(

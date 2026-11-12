@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { escalar } from './escala';
 import { Cristal } from './tipos';
 import { aleatorio, aplicarWrap } from './vetor';
 
@@ -15,9 +16,9 @@ export function criarCristal(x: number, y: number): Cristal {
     id: proximoId++,
     x,
     y,
-    vx: aleatorio(-12, 12),
-    vy: aleatorio(-12, 12),
-    raio: 5,
+    vx: aleatorio(escalar(-12), escalar(12)),
+    vy: aleatorio(escalar(-12), escalar(12)),
+    raio: escalar(5),
     vida: VIDA_CRISTAL,
     maxVida: VIDA_CRISTAL,
   };

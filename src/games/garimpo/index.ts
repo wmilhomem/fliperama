@@ -4,6 +4,7 @@
  */
 
 import { EngineContext, GameInstance, GameModule, InputState } from '../../engine/types';
+import { MARGEM_LATERAL, MARGEM_TOPO } from './escala';
 import { Cristal, Estrela, Nave, Particula, Pirata, Rocha, Tiro } from './tipos';
 import {
   atualizarNave,
@@ -52,13 +53,14 @@ type EstadoJogo =
 const VIDAS_INICIAIS = 3;
 const VIDAS_MAXIMAS = 9;
 const INTERVALO_VIDA_EXTRA = 10000;
-const MAX_ROCHAS_FASE = 11;
+const ROCHAS_INICIAIS = 6;
+const MAX_ROCHAS_FASE = 17;
 const MAX_PIRATAS = 3;
 
 function criarEstrelas(largura: number, altura: number): Estrela[] {
   const estrelas: Estrela[] = [];
 
-  for (let i = 0; i < 58; i++) {
+  for (let i = 0; i < 150; i++) {
     estrelas.push({
       x: aleatorio(0, largura),
       y: aleatorio(0, altura),
@@ -76,8 +78,8 @@ export const garimpoGameModule: GameModule = {
   descricao: 'Quebre as rochas, colete cristais e sobreviva ao cinturão.',
   genero: 'Tiro espacial',
   corTema: '#22D3EE',
-  largura: 320,
-  altura: 240,
+  largura: 480,
+  altura: 560,
   instrucoes: {
     historia:
       'Você é um garimpeiro espacial preso em um cinturão de asteroides. Quebre as rochas, colete cristais de energia e enfrente os piratas que cercam a região. Cada fase traz mais pedras — e mais perigo.',
@@ -152,7 +154,7 @@ export const garimpoGameModule: GameModule = {
     }
 
     function centroLivre(): boolean {
-      const raioSeguro = nave.raio + 15;
+      const raioSeguro = nave.raio + 22;
 
       const livreDeRochas = rochas.every(
         (rocha) => distancia(centroX, centroY, rocha.x, rocha.y) > rocha.raio + raioSeguro
@@ -166,7 +168,7 @@ export const garimpoGameModule: GameModule = {
     }
 
     function iniciarFase(): void {
-      const quantidade = Math.min(MAX_ROCHAS_FASE, 4 + (fase - 1));
+      const quantidade = Math.min(MAX_ROCHAS_FASE, ROCHAS_INICIAIS + (fase - 1));
 
       rochas = criarRochasFase(quantidade, largura, altura);
       tiros = [];
@@ -230,8 +232,8 @@ export const garimpoGameModule: GameModule = {
       estado = 'morrendo';
       timerEstado = 1.35;
 
-      criarExplosao(particulas, nave.x, nave.y, '#67E8F9', 26, 180);
-      criarExplosao(particulas, nave.x, nave.y, '#FFFFFF', 10, 110);
+      criarExplosao(particulas, nave.x, nave.y, '#67E8F9', 36, 180);
+      criarExplosao(particulas, nave.x, nave.y, '#FFFFFF', 14, 110);
       ctx.audio.tocar('explosaoNave');
 
       vidas = ctx.hud.perderVida();
@@ -243,7 +245,7 @@ export const garimpoGameModule: GameModule = {
       nave.recargaSalto = RECARGA_SALTO;
       ctx.audio.tocar('salto');
 
-      criarExplosao(particulas, nave.x, nave.y, '#67E8F9', 12, 90);
+      criarExplosao(particulas, nave.x, nave.y, '#67E8F9', 16, 90);
 
       if (Math.random() < 1 / 8) {
         destruirNave();
@@ -257,20 +259,20 @@ export const garimpoGameModule: GameModule = {
       nave.vy = 0;
       nave.invulneravel = Math.max(nave.invulneravel, 1.0);
 
-      criarExplosao(particulas, nave.x, nave.y, '#A5F3FC', 12, 90);
+      criarExplosao(particulas, nave.x, nave.y, '#A5F3FC', 16, 90);
     }
 
     function encontrarDestinoSalto(): { x: number; y: number } {
       for (let tentativa = 0; tentativa < 40; tentativa++) {
-        const x = aleatorio(24, largura - 24);
-        const y = aleatorio(34, altura - 24);
+        const x = aleatorio(MARGEM_LATERAL, largura - MARGEM_LATERAL);
+        const y = aleatorio(MARGEM_TOPO, altura - MARGEM_LATERAL);
 
-        const longeDaNave = distancia(x, y, nave.x, nave.y) > 60;
+        const longeDaNave = distancia(x, y, nave.x, nave.y) > 90;
         const longeDasRochas = rochas.every(
-          (rocha) => distancia(x, y, rocha.x, rocha.y) > rocha.raio + 22
+          (rocha) => distancia(x, y, rocha.x, rocha.y) > rocha.raio + 33
         );
         const longeDosPiratas = piratas.every(
-          (pirata) => distancia(x, y, pirata.x, pirata.y) > pirata.raio + 22
+          (pirata) => distancia(x, y, pirata.x, pirata.y) > pirata.raio + 33
         );
 
         if (longeDaNave && longeDasRochas && longeDosPiratas) return { x, y };
@@ -345,7 +347,7 @@ export const garimpoGameModule: GameModule = {
 
         pontuar(pontos, pirata.x, pirata.y, '#F472B6');
         ctx.audio.tocar('explosao');
-        criarExplosao(particulas, pirata.x, pirata.y, '#F472B6', 22, 140);
+        criarExplosao(particulas, pirata.x, pirata.y, '#F472B6', 30, 140);
         cristais.push(criarCristal(pirata.x, pirata.y));
         ganharCarga(0.18);
       }
@@ -364,7 +366,7 @@ export const garimpoGameModule: GameModule = {
           if (ctx.colisao.circuloCirculo(tiro, outro)) {
             cancelados.add(tiro.id);
             cancelados.add(outro.id);
-            criarExplosao(particulas, tiro.x, tiro.y, '#FDE68A', 5, 60);
+            criarExplosao(particulas, tiro.x, tiro.y, '#FDE68A', 7, 60);
             break;
           }
         }
@@ -380,7 +382,7 @@ export const garimpoGameModule: GameModule = {
 
         if (
           ctx.colisao.circuloCirculo(
-            { x: nave.x, y: nave.y, raio: nave.raio + 2 },
+            { x: nave.x, y: nave.y, raio: nave.raio + 3 },
             cristal
           )
         ) {
@@ -388,7 +390,7 @@ export const garimpoGameModule: GameModule = {
           pontuar(25, cristal.x, cristal.y, '#FDE68A');
           ctx.audio.tocar('cristal');
           ganharCarga(0.05);
-          criarExplosao(particulas, cristal.x, cristal.y, '#FDE68A', 6, 55);
+          criarExplosao(particulas, cristal.x, cristal.y, '#FDE68A', 8, 55);
         }
       }
 

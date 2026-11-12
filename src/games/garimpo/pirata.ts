@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { escalar, MARGEM_TOPO } from './escala';
 import { Nave, Pirata, TipoPirata } from './tipos';
 import { aleatorio, aplicarWrap, TAU } from './vetor';
 
@@ -16,16 +17,16 @@ const CONFIG_PIRATA: Record<
   { raio: number; velocidade: number; intervalo: number; velocidadeTiro: number }
 > = {
   grande: {
-    raio: 12,
-    velocidade: 46,
+    raio: escalar(12),
+    velocidade: escalar(46),
     intervalo: 2.2,
-    velocidadeTiro: 120,
+    velocidadeTiro: escalar(120),
   },
   pequeno: {
-    raio: 8,
-    velocidade: 88,
+    raio: escalar(8),
+    velocidade: escalar(88),
     intervalo: 1.35,
-    velocidadeTiro: 185,
+    velocidadeTiro: escalar(185),
   },
 };
 
@@ -34,9 +35,9 @@ let proximoId = 1;
 export function criarPirata(tipo: TipoPirata, largura: number, altura: number): Pirata {
   const cfg = CONFIG_PIRATA[tipo];
   const daEsquerda = Math.random() < 0.5;
-  const y = aleatorio(34, altura - 30);
+  const y = aleatorio(MARGEM_TOPO + 8, altura - 40);
   const vx = (daEsquerda ? 1 : -1) * cfg.velocidade;
-  const vy = aleatorio(-18, 18);
+  const vy = aleatorio(escalar(-18), escalar(18));
 
   return {
     id: proximoId++,

@@ -4,11 +4,12 @@
  */
 
 import { InputState } from '../../engine/types';
+import { escalar } from './escala';
 import { Nave } from './tipos';
 import { aplicarWrap, TAU } from './vetor';
 
-export const ACELERACAO = 135;
-export const VELOCIDADE_MAXIMA = 175;
+export const ACELERACAO = escalar(135);
+export const VELOCIDADE_MAXIMA = escalar(175);
 export const VELOCIDADE_GIRO = 3.6;
 export const DURACAO_INVULNERAVEL = 2.0;
 export const RECARGA_SALTO = 1.0;
@@ -22,7 +23,7 @@ export function criarNave(largura: number, altura: number): Nave {
     vx: 0,
     vy: 0,
     angulo: -Math.PI / 2,
-    raio: 7,
+    raio: escalar(7),
     invulneravel: DURACAO_INVULNERAVEL,
     acelerando: false,
     timerPropulsor: 0,

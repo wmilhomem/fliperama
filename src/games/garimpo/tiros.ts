@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { escalar } from './escala';
 import { Nave, Tiro } from './tipos';
 import { aplicarWrap } from './vetor';
 
@@ -16,13 +17,16 @@ export function criarTiroJogador(nave: Nave, desvioAngulo = 0): Tiro {
   const cos = Math.cos(angulo);
   const sin = Math.sin(angulo);
 
+  const velocidade = escalar(285);
+  const bocal = escalar(11);
+
   return {
     id: proximoId++,
-    x: nave.x + cos * 11,
-    y: nave.y + sin * 11,
-    vx: cos * 285 + nave.vx * 0.2,
-    vy: sin * 285 + nave.vy * 0.2,
-    raio: 2,
+    x: nave.x + cos * bocal,
+    y: nave.y + sin * bocal,
+    vx: cos * velocidade + nave.vx * 0.2,
+    vy: sin * velocidade + nave.vy * 0.2,
+    raio: escalar(2),
     vida: VIDA_TIRO,
     maxVida: VIDA_TIRO,
     origem: 'jogador',
@@ -41,7 +45,7 @@ export function criarTiroPirata(
     y,
     vx: Math.cos(angulo) * velocidade,
     vy: Math.sin(angulo) * velocidade,
-    raio: 2.5,
+    raio: escalar(2.5),
     vida: 3.5,
     maxVida: 3.5,
     origem: 'pirata',
