@@ -1,10 +1,10 @@
-﻿/**
+/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import {
-  LARGURA,
+  LARGURA_MUNDO,
   SEMENTE_MUNDO,
   SUBSOLO_CHAO,
   TOTAL_TELAS,
@@ -81,7 +81,7 @@ function gerarTela(indice: number): TelaSelva {
   const obstaculos = tipo === 'livre' ? [] : criarObstaculo(tipo, rng);
   const parede =
     indice >= 6 && (indice % 5 === 2 || rng() < 0.2)
-      ? { x: 154, largura: 12 }
+      ? { x: 148, largura: 12 }
       : null;
   const escadas = criarEscadas(tipo, parede);
   const escorpioes = criarEscorpioes(indice, rng, parede);
@@ -100,7 +100,7 @@ function gerarTela(indice: number): TelaSelva {
 function criarObstaculo(tipo: TipoTela, rng: () => number): Obstaculo[] {
   switch (tipo) {
     case 'tronco': {
-      const x = Math.floor(aleatorio(rng, 108, 238));
+      const x = Math.floor(aleatorio(rng, 68, 188));
       return [
         {
           tipo: 'tronco',
@@ -114,12 +114,12 @@ function criarObstaculo(tipo: TipoTela, rng: () => number): Obstaculo[] {
     }
 
     case 'fileira': {
-      const base = Math.floor(aleatorio(rng, 112, 218));
+      const base = Math.floor(aleatorio(rng, 72, 150));
       const quantidade = inteiro(rng, 2, 3);
       const troncos: number[] = [];
 
       for (let i = 0; i < quantidade; i++) {
-        troncos.push(base + i * 24);
+        troncos.push(base + i * 22);
       }
 
       return [
@@ -127,7 +127,7 @@ function criarObstaculo(tipo: TipoTela, rng: () => number): Obstaculo[] {
           tipo: 'fileira',
           x: base,
           y: TRILHA_Y - 9,
-          largura: (quantidade - 1) * 24 + 9,
+          largura: (quantidade - 1) * 22 + 9,
           altura: 9,
           troncos,
         },
@@ -136,13 +136,13 @@ function criarObstaculo(tipo: TipoTela, rng: () => number): Obstaculo[] {
 
     case 'jacare': {
       const quantidade = inteiro(rng, 2, 3);
-      const x = Math.floor(aleatorio(rng, 112, 174));
-      const largura = quantidade * 22 + (quantidade - 1) * 2;
+      const x = Math.floor(aleatorio(rng, 72, 112));
+      const largura = quantidade * 20 + (quantidade - 1) * 2;
       const jacares = [];
 
       for (let i = 0; i < quantidade; i++) {
         jacares.push({
-          x: x + i * 24,
+          x: x + i * 22,
           largura: 22,
           fase: i * 0.72 + rng() * 0.35,
         });
@@ -152,26 +152,26 @@ function criarObstaculo(tipo: TipoTela, rng: () => number): Obstaculo[] {
     }
 
     case 'cipo': {
-      const x = Math.floor(aleatorio(rng, 114, 136));
+      const x = Math.floor(aleatorio(rng, 82, 96));
       return [
         {
           tipo: 'cipo',
           x,
-          largura: 94,
-          ancoraX: x + 47,
-          ancoraY: 34,
-          comprimento: 82,
+          largura: 84,
+          ancoraX: x + 42,
+          ancoraY: 32,
+          comprimento: 74,
           fase: rng() * Math.PI * 2,
         },
       ];
     }
 
     case 'areia': {
-      const largura = Math.floor(aleatorio(rng, 42, 52));
+      const largura = Math.floor(aleatorio(rng, 38, 46));
       return [
         {
           tipo: 'areia',
-          x: Math.floor(aleatorio(rng, 116, 266 - largura)),
+          x: Math.floor(aleatorio(rng, 72, 132)),
           largura,
         },
       ];
@@ -181,7 +181,7 @@ function criarObstaculo(tipo: TipoTela, rng: () => number): Obstaculo[] {
       return [
         {
           tipo: 'cobra',
-          x: Math.floor(aleatorio(rng, 112, 254)),
+          x: Math.floor(aleatorio(rng, 72, 196)),
           largura: 17,
           altura: 10,
           y: TRILHA_Y - 10,
@@ -193,7 +193,7 @@ function criarObstaculo(tipo: TipoTela, rng: () => number): Obstaculo[] {
       return [
         {
           tipo: 'fogueira',
-          x: Math.floor(aleatorio(rng, 112, 250)),
+          x: Math.floor(aleatorio(rng, 72, 194)),
           largura: 18,
           altura: 14,
           y: TRILHA_Y - 8,
@@ -211,9 +211,9 @@ function criarEscadas(
   tipo: TipoTela,
   parede: { x: number; largura: number } | null
 ): number[] {
-  if (parede) return [46, 274];
-  if (tipo === 'jacare' || tipo === 'cipo' || tipo === 'areia') return [46, 274];
-  return [46, 160, 274];
+  if (parede) return [38, 188];
+  if (tipo === 'jacare' || tipo === 'cipo' || tipo === 'areia') return [38, 188];
+  return [38, 112, 188];
 }
 
 function criarEscorpioes(
@@ -226,13 +226,13 @@ function criarEscorpioes(
   const quantidade = rngExtra() < 0.58 ? (rngExtra() < 0.18 ? 2 : 1) : 0;
 
   for (let i = 0; i < quantidade; i++) {
-    let x = Math.floor(aleatorio(rng, 34, 252));
+    let x = Math.floor(aleatorio(rng, 28, 196));
 
     if (parede && x + 12 > parede.x - 8 && x < parede.x + parede.largura + 8) {
       x = parede.x + parede.largura + 18;
     }
 
-    if (x + 12 > LARGURA - 26) x = LARGURA - 44;
+    if (x + 12 > LARGURA_MUNDO - 26) x = LARGURA_MUNDO - 44;
 
     escorpioes.push({
       id: indice * 10 + i,
@@ -278,12 +278,12 @@ function encontrarXSeguro(
   rng: () => number
 ): number {
   for (let tentativa = 0; tentativa < 24; tentativa++) {
-    const x = Math.floor(aleatorio(rng, 58, 264));
+    const x = Math.floor(aleatorio(rng, 46, 198));
     if (camada === 'superficie' && xSeguroSuperficie(tela, x)) return x;
     if (camada === 'subsolo' && xSeguroSubsolo(tela, x)) return x;
   }
 
-  return camada === 'superficie' ? 286 : 220;
+  return camada === 'superficie' ? 196 : 170;
 }
 
 function xSeguroSuperficie(tela: TelaSelva, x: number): boolean {
@@ -309,6 +309,3 @@ function xSeguroSubsolo(tela: TelaSelva, x: number): boolean {
     (escorpiao) => x > escorpiao.x - 16 && x < escorpiao.x + escorpiao.largura + 16
   );
 }
-
-
-

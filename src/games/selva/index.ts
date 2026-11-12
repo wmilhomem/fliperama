@@ -6,12 +6,17 @@
 import { EngineContext, GameInstance, GameModule, InputState } from '../../engine/types';
 import {
   ALTURA,
+  ALTURA_MUNDO,
   DURACAO_ATORDOAMENTO,
   DURACAO_BRILHO,
   DURACAO_INVULNERAVEL,
   DURACAO_JOGO,
   DURACAO_MORTE,
+  ESCALA,
   LARGURA,
+  LARGURA_MUNDO,
+  OFFSET_X,
+  OFFSET_Y,
   PENALIDADE,
   PONTOS_INICIAIS,
   SUBSOLO_CHAO,
@@ -292,7 +297,7 @@ export const selvaGameModule: GameModule = {
 
       telaAtual = alvo;
       jogador = criarExplorador(
-        direcao > 0 ? 10 : LARGURA - 10,
+        direcao > 0 ? 10 : LARGURA_MUNDO - 10,
         camada === 'subsolo' ? SUBSOLO_CHAO : TRILHA_Y
       );
       cipoAtual = null;
@@ -492,11 +497,11 @@ export const selvaGameModule: GameModule = {
         if (jogador.x < 6 && input.esquerda) {
           if (tentarTransicao(-1)) return;
           jogador.x = 6;
-        } else if (jogador.x > LARGURA - 6 && input.direita) {
+        } else if (jogador.x > LARGURA_MUNDO - 6 && input.direita) {
           if (tentarTransicao(1)) return;
-          jogador.x = LARGURA - 6;
+          jogador.x = LARGURA_MUNDO - 6;
         } else {
-          jogador.x = clamp(jogador.x, 6, LARGURA - 6);
+          jogador.x = clamp(jogador.x, 6, LARGURA_MUNDO - 6);
         }
 
         if (camada === 'subsolo' && telaCorrente.parede) {
@@ -642,6 +647,19 @@ export const selvaGameModule: GameModule = {
 
       desenhar(g: CanvasRenderingContext2D) {
         const telaCorrente = tela();
+        const larguraMundo = LARGURA_MUNDO * ESCALA;
+        const alturaMundo = ALTURA_MUNDO * ESCALA;
+
+        g.fillStyle = '#020A06';
+        g.fillRect(0, 0, LARGURA, ALTURA);
+
+        g.save();
+        g.beginPath();
+        g.rect(OFFSET_X, OFFSET_Y, larguraMundo, alturaMundo);
+        g.clip();
+        g.imageSmoothingEnabled = false;
+        g.translate(OFFSET_X, OFFSET_Y);
+        g.scale(ESCALA, ESCALA);
 
         desenharCenario(g, telaCorrente, tempo);
         desenharObstaculosSuperficie(g, telaCorrente, tempo);
@@ -659,11 +677,13 @@ export const selvaGameModule: GameModule = {
           desenharExplorador(g, ctx.sprites, jogador, tempo);
         }
 
+        g.restore();
+
         if (flashTela > 0) {
           g.save();
           g.globalAlpha = (flashTela / DURACAO_BRILHO) * 0.28;
           g.fillStyle = flashCor;
-          g.fillRect(0, 0, LARGURA, ALTURA);
+          g.fillRect(OFFSET_X, OFFSET_Y, larguraMundo, alturaMundo);
           g.restore();
         }
 

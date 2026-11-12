@@ -4,8 +4,8 @@
  */
 
 import {
-  ALTURA,
-  LARGURA,
+  ALTURA_MUNDO,
+  LARGURA_MUNDO,
   SEMENTE_MUNDO,
   SUBSOLO_CHAO,
   SUBSOLO_TOPO,
@@ -28,16 +28,16 @@ export function desenharSubsolo(
   tempo: number
 ): void {
   g.fillStyle = '#111827';
-  g.fillRect(0, SUBSOLO_TOPO, LARGURA, ALTURA - SUBSOLO_TOPO);
+  g.fillRect(0, SUBSOLO_TOPO, LARGURA_MUNDO, ALTURA_MUNDO - SUBSOLO_TOPO);
   g.fillStyle = '#1F2937';
-  g.fillRect(0, SUBSOLO_TOPO, LARGURA, 4);
+  g.fillRect(0, SUBSOLO_TOPO, LARGURA_MUNDO, 4);
   g.fillStyle = '#0F172A';
-  g.fillRect(0, SUBSOLO_CHAO, LARGURA, ALTURA - SUBSOLO_CHAO);
+  g.fillRect(0, SUBSOLO_CHAO, LARGURA_MUNDO, ALTURA_MUNDO - SUBSOLO_CHAO);
 
   const rng = rngDaTela(SEMENTE_MUNDO, tela.indice, 0x51);
 
   for (let i = 0; i < 34; i++) {
-    const x = Math.floor(rng() * LARGURA);
+    const x = Math.floor(rng() * LARGURA_MUNDO);
     const y = SUBSOLO_TOPO + 5 + Math.floor(rng() * 38);
     const tom = rng() > 0.55 ? '#263449' : '#1A2434';
     g.fillStyle = tom;
@@ -45,13 +45,13 @@ export function desenharSubsolo(
   }
 
   for (let i = 0; i < 18; i++) {
-    const x = Math.floor(rng() * LARGURA);
+    const x = Math.floor(rng() * LARGURA_MUNDO);
     g.fillStyle = i % 3 === 0 ? '#334155' : '#1E293B';
     g.fillRect(x, SUBSOLO_CHAO - 1, 2 + Math.floor(rng() * 4), 2);
   }
 
   g.fillStyle = '#0B1120';
-  for (let x = 0; x < LARGURA; x += 12) {
+  for (let x = 0; x < LARGURA_MUNDO; x += 12) {
     const altura = 2 + Math.floor(rng() * 4);
     g.fillRect(x, SUBSOLO_TOPO - altura, 8, altura);
   }
@@ -61,9 +61,9 @@ export function desenharSubsolo(
   }
 
   g.fillStyle = '#0B1120';
-  g.fillRect(0, SUBSOLO_CHAO + 2, LARGURA, 1);
+  g.fillRect(0, SUBSOLO_CHAO + 2, LARGURA_MUNDO, 1);
   g.fillStyle = '#334155';
-  g.fillRect(0, SUBSOLO_CHAO + 3, LARGURA, 1);
+  g.fillRect(0, SUBSOLO_CHAO + 3, LARGURA_MUNDO, 1);
 }
 
 function desenharEscada(

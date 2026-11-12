@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { LARGURA, SUBSOLO_CHAO, SUBSOLO_TOPO } from '../constantes';
+import { LARGURA_MUNDO, SUBSOLO_CHAO, SUBSOLO_TOPO } from '../constantes';
 import { Escorpiao, Explorador, Parede } from '../tipos';
 
 export function atualizarEscorpiao(
@@ -14,7 +14,7 @@ export function atualizarEscorpiao(
   escorpiao.x += escorpiao.vx * dt;
 
   let minimo = 26;
-  let maximo = LARGURA - 26;
+  let maximo = LARGURA_MUNDO - 26;
 
   if (parede) {
     if (escorpiao.x + escorpiao.largura < parede.x) {
@@ -85,11 +85,11 @@ export function desenharEscorpiao(
 
 export function desenharTrilhoSubsolo(g: CanvasRenderingContext2D): void {
   g.fillStyle = '#1F2937';
-  g.fillRect(0, SUBSOLO_CHAO, LARGURA, 2);
+  g.fillRect(0, SUBSOLO_CHAO, LARGURA_MUNDO, 2);
   g.fillStyle = '#111827';
-  g.fillRect(0, SUBSOLO_CHAO + 2, LARGURA, 10);
+  g.fillRect(0, SUBSOLO_CHAO + 2, LARGURA_MUNDO, 10);
   g.fillStyle = '#374151';
-  for (let x = 8; x < LARGURA; x += 24) {
+  for (let x = 8; x < LARGURA_MUNDO; x += 24) {
     g.fillRect(x, SUBSOLO_TOPO + 2, 1, 4);
     g.fillRect(x + 8, SUBSOLO_CHAO - 1, 3, 1);
   }

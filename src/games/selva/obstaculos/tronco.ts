@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { LARGURA } from '../constantes';
+import { LARGURA_MUNDO } from '../constantes';
 import { Explorador, TroncoObstaculo } from '../tipos';
 
 export function atualizarTronco(tronco: TroncoObstaculo, dt: number): void {
@@ -12,8 +12,8 @@ export function atualizarTronco(tronco: TroncoObstaculo, dt: number): void {
   if (tronco.x < 18) {
     tronco.x = 18;
     tronco.vx = Math.abs(tronco.vx);
-  } else if (tronco.x + tronco.largura > LARGURA - 18) {
-    tronco.x = LARGURA - 18 - tronco.largura;
+  } else if (tronco.x + tronco.largura > LARGURA_MUNDO - 18) {
+    tronco.x = LARGURA_MUNDO - 18 - tronco.largura;
     tronco.vx = -Math.abs(tronco.vx);
   }
 }
