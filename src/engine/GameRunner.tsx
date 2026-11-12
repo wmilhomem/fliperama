@@ -97,6 +97,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
 
     // Inicializar input
     const input = inputManagerRef.current;
+    input.definirTeclasExtras(modulo.teclasExtras ?? {});
     input.iniciar();
 
     // Inicializar HUD com recorde do jogo
@@ -255,6 +256,51 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
     inputManagerRef.current.definirTouch(botao, false);
   };
 
+  // Ponteiros toques direto na tela do jogo (opcional, usado por pinball)
+  const ponteirosTelaRef = useRef<Map<number, 'esquerda' | 'direita'>>(new Map());
+
+  const acaoDoLado = (lado: 'esquerda' | 'direita'): keyof InputState | undefined => {
+    const config = modulo.toqueTela;
+    if (!config) return undefined;
+    return lado === 'esquerda' ? config.esquerda : config.direita;
+  };
+
+  const handlePointerDownTela = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!modulo.toqueTela) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const lado: 'esquerda' | 'direita' =
+      e.clientX - rect.left < rect.width / 2 ? 'esquerda' : 'direita';
+    ponteirosTelaRef.current.set(e.pointerId, lado);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Captura de ponteiro é opcional em alguns navegadores
+    }
+    const acao = acaoDoLado(lado);
+    if (acao) {
+      audioRef.current.ativar();
+      inputManagerRef.current.definirTouch(acao, true);
+    }
+  };
+
+  const handlePointerUpTela = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!modulo.toqueTela) return;
+    const lado = ponteirosTelaRef.current.get(e.pointerId);
+    if (!lado) return;
+    ponteirosTelaRef.current.delete(e.pointerId);
+    // Só solta a ação quando não há outro ponteiro no mesmo lado
+    let aindaPressionado = false;
+    for (const valor of ponteirosTelaRef.current.values()) {
+      if (valor === lado) aindaPressionado = true;
+    }
+    if (aindaPressionado) return;
+    const acao = acaoDoLado(lado);
+    if (acao) inputManagerRef.current.definirTouch(acao, false);
+  };
+
   const exibirTouch =
     config.controlesTouch === 'sempre' ||
     (config.controlesTouch === 'auto' && dispositivoTouch);
@@ -365,7 +411,11 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
             height={modulo.altura}
             style={{
               aspectRatio: `${modulo.largura}/${modulo.altura}`,
+              ...(modulo.toqueTela ? { touchAction: 'none' } : {}),
             }}
+            onPointerDown={modulo.toqueTela ? handlePointerDownTela : undefined}
+            onPointerUp={modulo.toqueTela ? handlePointerUpTela : undefined}
+            onPointerCancel={modulo.toqueTela ? handlePointerUpTela : undefined}
             className="pixelated w-auto max-w-full max-h-[64vh] sm:max-h-[72vh] md:max-h-[78vh] lg:max-h-[82vh] bg-black rounded shadow-2xl cursor-pointer"
           />
 

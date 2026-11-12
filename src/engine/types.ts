@@ -57,7 +57,18 @@ export type AudioPreset =
   | 'salto'
   | 'cristal'
   | 'batida'
-  | 'abastecer';
+  | 'abastecer'
+  | 'plunger'
+  | 'flipper'
+  | 'bumper'
+  | 'slingshot'
+  | 'alvo'
+  | 'alvoQueda'
+  | 'spinner'
+  | 'drenar'
+  | 'tilt'
+  | 'bolaExtra'
+  | 'especial';
 
 export interface AudioService {
   tocar(preset: AudioPreset): void;
@@ -173,6 +184,18 @@ export interface GameInstance {
 }
 
 /**
+ * Configuração opcional de toque direto na tela do jogo.
+ * Usada por jogos de pinball: tocar na metade esquerda/direita do canvas
+ * aciona uma ação do InputState. Quando ausente, nada muda.
+ */
+export interface ConfiguracaoToqueTela {
+  /** Ação acionada ao tocar a metade esquerda da tela. */
+  esquerda?: keyof InputState;
+  /** Ação acionada ao tocar a metade direita da tela. */
+  direita?: keyof InputState;
+}
+
+/**
  * Contrato de um jogo registrado na plataforma Fliperama.
  */
 export interface GameModule {
@@ -188,5 +211,13 @@ export interface GameModule {
     controles?: string[];
     pontos?: { acao: string; pontos: number }[];
   };
+  /**
+   * Teclas alternativas mapeadas para ações do motor.
+   * Ex.: { 'KeyZ': 'esquerda', 'Slash': 'direita' }.
+   * As teclas listadas aqui têm precedência sobre o mapeamento padrão.
+   */
+  teclasExtras?: Record<string, keyof InputState>;
+  /** Toque direto na tela do canvas (opcional). */
+  toqueTela?: ConfiguracaoToqueTela;
   criar(ctx: EngineContext): GameInstance;
 }

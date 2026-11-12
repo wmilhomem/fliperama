@@ -36,9 +36,33 @@ export class UnifiedInputManager {
   private boundKeyUp: (e: KeyboardEvent) => void;
   private listening: boolean = false;
 
+  /**
+   * Teclas alternativas declaradas pelo jogo (ex.: Z e / como flippers).
+   * As teclas registradas aqui têm precedência sobre o mapeamento padrão,
+   * sem alterar o comportamento dos demais jogos.
+   */
+  private teclasExtras: Record<string, keyof InputState> = {};
+  private codigosExtras = new Set<string>();
+  private letrasIgnoradas = new Set<string>();
+
   constructor() {
     this.boundKeyDown = this.aoPressionarTecla.bind(this);
     this.boundKeyUp = this.aoSoltarTecla.bind(this);
+  }
+
+  /** Define o mapa de teclas alternativas do jogo atual. */
+  definirTeclasExtras(mapa: Record<string, keyof InputState>): void {
+    this.teclasExtras = { ...mapa };
+    this.codigosExtras = new Set(Object.keys(mapa));
+    this.letrasIgnoradas = new Set<string>();
+    for (const codigo of Object.keys(mapa)) {
+      // Teclas de letra também chegam como "a"/"A" no evento do teclado.
+      if (codigo.startsWith('Key') && codigo.length === 4) {
+        const letra = codigo.slice(3).toLowerCase();
+        this.letrasIgnoradas.add(letra);
+        this.letrasIgnoradas.add(letra.toUpperCase());
+      }
+    }
   }
 
   iniciar(): void {
@@ -55,6 +79,30 @@ export class UnifiedInputManager {
     this.teclasPressionadas.clear();
     this.touchEstados = {};
     this.listening = false;
+    this.teclasExtras = {};
+    this.codigosExtras.clear();
+  }
+
+  /** Verifica uma tecla do mapeamento padrão (ignorando teclas alternativas). */
+  private pressionadaPadrao(code: string): boolean {
+    if (this.codigosExtras.has(code)) return false;
+    return this.teclasPressionadas.has(code);
+  }
+
+  /** Verifica uma letra do mapeamento padrão (ignorando letras alternativas). */
+  private pressionadaLetra(letra: string): boolean {
+    if (this.letrasIgnoradas.has(letra)) return false;
+    return this.teclasPressionadas.has(letra);
+  }
+
+  /** Verifica se alguma tecla alternativa está acionando a ação. */
+  private extrasAtivas(acao: keyof InputState): boolean {
+    for (const codigo of Object.keys(this.teclasExtras)) {
+      if (this.teclasExtras[codigo] === acao && this.teclasPressionadas.has(codigo)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private aoPressionarTecla(e: KeyboardEvent): void {
@@ -140,69 +188,85 @@ export class UnifiedInputManager {
     const gp = this.lerGamepad();
 
     const kLeft =
-      this.teclasPressionadas.has('ArrowLeft') ||
-      this.teclasPressionadas.has('KeyA') ||
-      this.teclasPressionadas.has('a') ||
-      this.teclasPressionadas.has('A');
+      this.pressionadaPadrao('ArrowLeft') ||
+      this.pressionadaPadrao('KeyA') ||
+      this.pressionadaLetra('a') ||
+      this.pressionadaLetra('A');
 
     const kRight =
-      this.teclasPressionadas.has('ArrowRight') ||
-      this.teclasPressionadas.has('KeyD') ||
-      this.teclasPressionadas.has('d') ||
-      this.teclasPressionadas.has('D');
+      this.pressionadaPadrao('ArrowRight') ||
+      this.pressionadaPadrao('KeyD') ||
+      this.pressionadaLetra('d') ||
+      this.pressionadaLetra('D');
 
     const kUp =
-      this.teclasPressionadas.has('ArrowUp') ||
-      this.teclasPressionadas.has('KeyW') ||
-      this.teclasPressionadas.has('w') ||
-      this.teclasPressionadas.has('W');
+      this.pressionadaPadrao('ArrowUp') ||
+      this.pressionadaPadrao('KeyW') ||
+      this.pressionadaLetra('w') ||
+      this.pressionadaLetra('W');
 
     const kDown =
-      this.teclasPressionadas.has('ArrowDown') ||
-      this.teclasPressionadas.has('KeyS') ||
-      this.teclasPressionadas.has('s') ||
-      this.teclasPressionadas.has('S');
+      this.pressionadaPadrao('ArrowDown') ||
+      this.pressionadaPadrao('KeyS') ||
+      this.pressionadaLetra('s') ||
+      this.pressionadaLetra('S');
 
     const kAction =
-      this.teclasPressionadas.has('Space') ||
+      this.pressionadaPadrao('Space') ||
       this.teclasPressionadas.has(' ') ||
-      this.teclasPressionadas.has('KeyZ') ||
-      this.teclasPressionadas.has('z') ||
-      this.teclasPressionadas.has('Z') ||
+      this.pressionadaPadrao('KeyZ') ||
+      this.pressionadaLetra('z') ||
+      this.pressionadaLetra('Z') ||
       this.teclasPressionadas.has('Enter');
 
     const kAction2 =
-      this.teclasPressionadas.has('ShiftLeft') ||
-      this.teclasPressionadas.has('ShiftRight') ||
-      this.teclasPressionadas.has('KeyX') ||
-      this.teclasPressionadas.has('x') ||
-      this.teclasPressionadas.has('X');
+      this.pressionadaPadrao('ShiftLeft') ||
+      this.pressionadaPadrao('ShiftRight') ||
+      this.pressionadaPadrao('KeyX') ||
+      this.pressionadaLetra('x') ||
+      this.pressionadaLetra('X');
 
     const kPause =
-      this.teclasPressionadas.has('KeyP') ||
-      this.teclasPressionadas.has('p') ||
-      this.teclasPressionadas.has('P');
+      this.pressionadaPadrao('KeyP') ||
+      this.pressionadaLetra('p') ||
+      this.pressionadaLetra('P');
 
     const kReset =
-      this.teclasPressionadas.has('KeyR') ||
-      this.teclasPressionadas.has('r') ||
-      this.teclasPressionadas.has('R');
+      this.pressionadaPadrao('KeyR') ||
+      this.pressionadaLetra('r') ||
+      this.pressionadaLetra('R');
 
     const kVoltar =
-      this.teclasPressionadas.has('Escape') ||
+      this.pressionadaPadrao('Escape') ||
       this.teclasPressionadas.has('Esc');
 
     const kMudo =
-      this.teclasPressionadas.has('KeyM') ||
-      this.teclasPressionadas.has('m') ||
-      this.teclasPressionadas.has('M');
+      this.pressionadaPadrao('KeyM') ||
+      this.pressionadaLetra('m') ||
+      this.pressionadaLetra('M');
 
-    const esquerda = kLeft || !!this.touchEstados.esquerda || gp.esquerda;
-    const direita = kRight || !!this.touchEstados.direita || gp.direita;
+    const esquerda =
+      kLeft ||
+      this.extrasAtivas('esquerda') ||
+      !!this.touchEstados.esquerda ||
+      gp.esquerda;
+    const direita =
+      kRight ||
+      this.extrasAtivas('direita') ||
+      !!this.touchEstados.direita ||
+      gp.direita;
     const cima = kUp || !!this.touchEstados.cima || gp.cima;
     const baixo = kDown || !!this.touchEstados.baixo || gp.baixo;
-    const acao = kAction || !!this.touchEstados.acao || gp.acao;
-    const acao2 = kAction2 || !!this.touchEstados.acao2 || gp.acao2;
+    const acao =
+      kAction ||
+      this.extrasAtivas('acao') ||
+      !!this.touchEstados.acao ||
+      gp.acao;
+    const acao2 =
+      kAction2 ||
+      this.extrasAtivas('acao2') ||
+      !!this.touchEstados.acao2 ||
+      gp.acao2;
     const pausa = kPause || !!this.touchEstados.pausarPressionado;
     const reiniciar = kReset || !!this.touchEstados.reiniciarPressionado;
     const voltar = kVoltar;

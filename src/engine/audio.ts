@@ -521,6 +521,181 @@ export class RetroAudioEngine implements AudioService {
           });
           break;
         }
+
+        case 'plunger': {
+          // Mola do lançador: corda metálica esticando e soltando
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(180, t);
+          osc.frequency.exponentialRampToValueAtTime(720, t + 0.12);
+          gain.gain.setValueAtTime(masterGain * 0.8, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.2);
+          this.tocarRuido(0.08, 1800, 400, 0.35);
+          break;
+        }
+
+        case 'flipper': {
+          // Estalo grave do flipper (borracha batendo na placa)
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(320, t);
+          osc.frequency.exponentialRampToValueAtTime(90, t + 0.07);
+          gain.gain.setValueAtTime(masterGain * 0.75, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.1);
+          break;
+        }
+
+        case 'bumper': {
+          // Tamborim: madeira aguda do topo do samba
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(760, t);
+          osc.frequency.exponentialRampToValueAtTime(430, t + 0.07);
+          gain.gain.setValueAtTime(masterGain * 0.85, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.11);
+          this.tocarRuido(0.05, 2600, 900, 0.3);
+          break;
+        }
+
+        case 'slingshot': {
+          // Chute de borracha: estalo curto e seco
+          this.tocarRuido(0.07, 2200, 260, 0.7);
+          break;
+        }
+
+        case 'alvo': {
+          // Alvo fixo: sino brilhante
+          const notas = [1046.5, 1568];
+          notas.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t + idx * 0.05);
+            gain.gain.setValueAtTime(masterGain * 0.7, t + idx * 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.05 + 0.16);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t + idx * 0.05);
+            osc.stop(t + idx * 0.05 + 0.17);
+          });
+          break;
+        }
+
+        case 'alvoQueda': {
+          // Alvo de queda: queda de bloco + nota descendente
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(520, t);
+          osc.frequency.exponentialRampToValueAtTime(180, t + 0.12);
+          gain.gain.setValueAtTime(masterGain * 0.8, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.15);
+          this.tocarRuido(0.06, 900, 200, 0.35);
+          break;
+        }
+
+        case 'spinner': {
+          // Spinner: clique de catraca
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(1500, t);
+          osc.frequency.exponentialRampToValueAtTime(700, t + 0.04);
+          gain.gain.setValueAtTime(masterGain * 0.45, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.06);
+          break;
+        }
+
+        case 'drenar': {
+          // Dreno: a bola se foi
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(420, t);
+          osc.frequency.exponentialRampToValueAtTime(70, t + 0.4);
+          gain.gain.setValueAtTime(masterGain * 0.7, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.44);
+          break;
+        }
+
+        case 'tilt': {
+          // Tilt: buzina de aviso
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(150, t);
+          osc.frequency.linearRampToValueAtTime(90, t + 0.35);
+          gain.gain.setValueAtTime(masterGain * 0.9, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.4);
+          break;
+        }
+
+        case 'bolaExtra': {
+          // Bola extra: fanfarra curta
+          const notas = [523.25, 659.25, 783.99, 1046.5];
+          notas.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(freq, t + idx * 0.09);
+            gain.gain.setValueAtTime(masterGain * 0.8, t + idx * 0.09);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.09 + 0.2);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t + idx * 0.09);
+            osc.stop(t + idx * 0.09 + 0.22);
+          });
+          break;
+        }
+
+        case 'especial': {
+          // Especial: brilho de cristal
+          const notas = [1318.5, 1760, 2093];
+          notas.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t + idx * 0.06);
+            gain.gain.setValueAtTime(masterGain * 0.6, t + idx * 0.06);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.06 + 0.22);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t + idx * 0.06);
+            osc.stop(t + idx * 0.06 + 0.24);
+          });
+          break;
+        }
       }
     } catch {
       // Ignora falhas de playback
