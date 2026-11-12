@@ -10,6 +10,7 @@ import { modeloGameModule } from './games/_modelo';
 import { tatuGameModule } from './games/tatu';
 import { garimpoGameModule } from './games/garimpo';
 import { hidroGameModule } from './games/hidro';
+import { selvaGameModule } from './games/selva';
 
 /**
  * REGISTRO CENTRAL DE JOGOS DO FLIPERAMA
@@ -24,6 +25,7 @@ export const JOGOS: GameModule[] = [
   tatuGameModule,
   garimpoGameModule,
   hidroGameModule,
+  selvaGameModule,
   modeloGameModule,
 ];
 
