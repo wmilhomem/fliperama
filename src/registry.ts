@@ -9,6 +9,7 @@ import { hannahGameModule } from './games/hannah';
 import { modeloGameModule } from './games/_modelo';
 import { tatuGameModule } from './games/tatu';
 import { garimpoGameModule } from './games/garimpo';
+import { hidroGameModule } from './games/hidro';
 
 /**
  * REGISTRO CENTRAL DE JOGOS DO FLIPERAMA
@@ -22,6 +23,7 @@ export const JOGOS: GameModule[] = [
   hannahGameModule,
   tatuGameModule,
   garimpoGameModule,
+  hidroGameModule,
   modeloGameModule,
 ];
 

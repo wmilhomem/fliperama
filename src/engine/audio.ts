@@ -501,6 +501,26 @@ export class RetroAudioEngine implements AudioService {
           osc.stop(t + 0.15);
           break;
         }
+
+        case 'abastecer': {
+          // Gorgolejo ascendente de combustível enchendo o tanque
+          const notas = [392, 494, 587.33];
+          notas.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, t + idx * 0.045);
+
+            gain.gain.setValueAtTime(masterGain * 0.45, t + idx * 0.045);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.045 + 0.11);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t + idx * 0.045);
+            osc.stop(t + idx * 0.045 + 0.12);
+          });
+          break;
+        }
       }
     } catch {
       // Ignora falhas de playback

@@ -56,7 +56,8 @@ export type AudioPreset =
   | 'explosaoNave'
   | 'salto'
   | 'cristal'
-  | 'batida';
+  | 'batida'
+  | 'abastecer';
 
 export interface AudioService {
   tocar(preset: AudioPreset): void;
