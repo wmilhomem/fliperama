@@ -5,8 +5,8 @@
 
 /**
  * MAPA DO LABIRINTO DO TATU
- * Resolução do labirinto: 28 colunas x 31 linhas de tiles (8x8 pixels cada = 224x248 px).
- * Posicionado a partir de Y = 24 px (abaixo do HUD do topo).
+ * Resolução do labirinto: 28 colunas x 31 linhas de tiles (16x16 pixels cada = 448x496 px).
+ * Posicionado a partir de X = 16 px e Y = 48 px (abaixo do HUD do topo).
  *
  * Legenda de tiles:
  * 0 = Espaço vazio (sem semente)

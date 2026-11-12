@@ -27,6 +27,8 @@ export interface InputState {
   // Comandos de sistema
   pausarPressionado: boolean; // Tecla P
   reiniciarPressionado: boolean; // Tecla R
+  voltarPressionado: boolean; // Tecla ESC
+  mudoPressionado: boolean; // Tecla M
 }
 
 /**

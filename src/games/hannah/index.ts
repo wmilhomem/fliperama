@@ -909,11 +909,12 @@ export const hannahGameModule: GameModule = {
         }
         fireballs = activeFireballs;
 
-        // Partículas
+        // Partículas (velocidade normalizada para 60 atualizações/segundo)
+        const fator60 = dt * 60;
         particles = particles.filter((pt) => {
-          pt.x += pt.vx;
-          pt.y += pt.vy;
-          pt.vy += 0.15;
+          pt.x += pt.vx * fator60;
+          pt.y += pt.vy * fator60;
+          pt.vy += 0.15 * fator60;
           pt.life -= dt;
           return pt.life > 0;
         });

@@ -62,6 +62,12 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
   const gameInstanceRef = useRef<GameInstance | null>(null);
   const gameLoopRef = useRef<RetroGameLoop | null>(null);
 
+  // Mantém os callbacks mais recentes acessíveis ao loop (evita closures obsoletas)
+  const onVoltarAoHubRef = useRef(onVoltarAoHub);
+  const onAlternarSomRef = useRef(onAlternarSom);
+  onVoltarAoHubRef.current = onVoltarAoHub;
+  onAlternarSomRef.current = onAlternarSom;
+
   // Detectar suporte a touch
   useEffect(() => {
     const isTouch =
@@ -129,7 +135,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
         reiniciarPartida();
       },
       voltarAoHub: () => {
-        onVoltarAoHub();
+        onVoltarAoHubRef.current();
       },
     };
 
@@ -143,7 +149,17 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
       atualizar: (dt: number) => {
         const inputState: InputState = input.obterEstado();
 
-        // Atalhos de sistema universais (P para pausa, R para reset)
+        // Atalhos de sistema universais (P pausa, R reset, M som, ESC hub)
+        if (inputState.voltarPressionado) {
+          onVoltarAoHubRef.current();
+          return;
+        }
+
+        if (inputState.mudoPressionado) {
+          alternarMudoLocal();
+          return;
+        }
+
         if (inputState.pausarPressionado) {
           alternarPausa();
           return;
@@ -224,7 +240,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
 
   const alternarMudoLocal = () => {
     audioRef.current.ativar();
-    onAlternarSom();
+    onAlternarSomRef.current();
   };
 
   // Handlers para botões touch virtuais

@@ -12,7 +12,35 @@ interface HelpModalProps {
   onFechar: () => void;
 }
 
+const CONTROLES_PADRAO = [
+  'Setas / WASD / D-Pad: Mover o personagem',
+  'Espaço / Tecla Z / Botão A: Ação principal / Pular',
+  'Shift / Tecla X / Botão B: Ação secundária',
+];
+
+const CONTROLES_SISTEMA = [
+  'Tecla P: Pausar / Continuar',
+  'Tecla R: Reiniciar partida',
+  'Tecla M: Ligar / desligar som',
+  'Tecla ESC: Voltar ao catálogo (Hub)',
+];
+
+const chaveDoControle = (linha: string): string => {
+  const separador = linha.indexOf(':');
+  return (separador === -1 ? linha : linha.slice(0, separador)).trim().toLowerCase();
+};
+
 export const HelpModal: React.FC<HelpModalProps> = ({ jogo, onFechar }) => {
+  const controlesDoJogo = jogo?.instrucoes?.controles;
+  const controlesBase =
+    controlesDoJogo && controlesDoJogo.length > 0 ? controlesDoJogo : CONTROLES_PADRAO;
+
+  const chavesExistentes = new Set(controlesBase.map(chaveDoControle));
+  const controlesCompletos = [
+    ...controlesBase,
+    ...CONTROLES_SISTEMA.filter((c) => !chavesExistentes.has(chaveDoControle(c))),
+  ];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-black/85 backdrop-blur-sm font-arcade text-white">
       <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-slate-950 border-2 border-red-700/80 rounded-2xl p-5 shadow-[0_0_35px_rgba(239,68,68,0.3)]">
@@ -53,26 +81,29 @@ export const HelpModal: React.FC<HelpModalProps> = ({ jogo, onFechar }) => {
           </h3>
 
           <div className="space-y-1.5 text-[9px]">
-            <div className="flex justify-between border-b border-slate-800/80 pb-1">
-              <span className="text-slate-400">Setas / WASD / D-Pad:</span>
-              <span className="text-white font-bold">Mover Zeca e Subir/Descer Escadas</span>
-            </div>
-            <div className="flex justify-between border-b border-slate-800/80 pb-1">
-              <span className="text-slate-400">Espaço / Tecla Z / Botão A:</span>
-              <span className="text-white font-bold">Pular por cima de barris</span>
-            </div>
-            <div className="flex justify-between border-b border-slate-800/80 pb-1">
-              <span className="text-slate-400">Tecla P:</span>
-              <span className="text-white font-bold">Pausar / Continuar</span>
-            </div>
-            <div className="flex justify-between border-b border-slate-800/80 pb-1">
-              <span className="text-slate-400">Tecla R:</span>
-              <span className="text-white font-bold">Reiniciar partida</span>
-            </div>
-            <div className="flex justify-between pb-1">
-              <span className="text-slate-400">Tecla ESC:</span>
-              <span className="text-white font-bold">Voltar ao catálogo (Hub)</span>
-            </div>
+            {controlesCompletos.map((linha, idx) => {
+              const separador = linha.indexOf(':');
+
+              if (separador === -1) {
+                return (
+                  <div key={idx} className="text-slate-300 border-b border-slate-800/80 pb-1 last:border-0">
+                    {linha}
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={idx}
+                  className="flex justify-between gap-3 border-b border-slate-800/80 pb-1 last:border-0"
+                >
+                  <span className="text-slate-400">{linha.slice(0, separador + 1)}</span>
+                  <span className="text-white font-bold text-right">
+                    {linha.slice(separador + 1).trim()}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
 

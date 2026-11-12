@@ -17,6 +17,8 @@ export class UnifiedInputManager {
     direita: boolean;
     pausa: boolean;
     reiniciar: boolean;
+    voltar: boolean;
+    mudo: boolean;
   } = {
     acao: false,
     acao2: false,
@@ -26,6 +28,8 @@ export class UnifiedInputManager {
     direita: false,
     pausa: false,
     reiniciar: false,
+    voltar: false,
+    mudo: false,
   };
 
   private boundKeyDown: (e: KeyboardEvent) => void;
@@ -184,6 +188,15 @@ export class UnifiedInputManager {
       this.teclasPressionadas.has('r') ||
       this.teclasPressionadas.has('R');
 
+    const kVoltar =
+      this.teclasPressionadas.has('Escape') ||
+      this.teclasPressionadas.has('Esc');
+
+    const kMudo =
+      this.teclasPressionadas.has('KeyM') ||
+      this.teclasPressionadas.has('m') ||
+      this.teclasPressionadas.has('M');
+
     const esquerda = kLeft || !!this.touchEstados.esquerda || gp.esquerda;
     const direita = kRight || !!this.touchEstados.direita || gp.direita;
     const cima = kUp || !!this.touchEstados.cima || gp.cima;
@@ -192,6 +205,8 @@ export class UnifiedInputManager {
     const acao2 = kAction2 || !!this.touchEstados.acao2 || gp.acao2;
     const pausa = kPause || !!this.touchEstados.pausarPressionado;
     const reiniciar = kReset || !!this.touchEstados.reiniciarPressionado;
+    const voltar = kVoltar;
+    const mudo = kMudo;
 
     // Detecção de borda de subida (just pressed)
     const acaoPressionada = acao && !this.estadosAnteriores.acao;
@@ -202,6 +217,8 @@ export class UnifiedInputManager {
     const direitaPressionada = direita && !this.estadosAnteriores.direita;
     const pausarPressionado = pausa && !this.estadosAnteriores.pausa;
     const reiniciarPressionado = reiniciar && !this.estadosAnteriores.reiniciar;
+    const voltarPressionado = voltar && !this.estadosAnteriores.voltar;
+    const mudoPressionado = mudo && !this.estadosAnteriores.mudo;
 
     // Salvar estado atual para o próximo frame
     this.estadosAnteriores = {
@@ -213,6 +230,8 @@ export class UnifiedInputManager {
       direita,
       pausa,
       reiniciar,
+      voltar,
+      mudo,
     };
 
     return {
@@ -230,6 +249,8 @@ export class UnifiedInputManager {
       direitaPressionada,
       pausarPressionado,
       reiniciarPressionado,
+      voltarPressionado,
+      mudoPressionado,
     };
   }
 
@@ -245,6 +266,8 @@ export class UnifiedInputManager {
       direita: false,
       pausa: false,
       reiniciar: false,
+      voltar: false,
+      mudo: false,
     };
   }
 }
