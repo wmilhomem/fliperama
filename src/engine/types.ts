@@ -48,7 +48,15 @@ export type AudioPreset =
   | 'passo'
   | 'item'
   | 'semente'
-  | 'fruta';
+  | 'fruta'
+  | 'propulsor'
+  | 'rochaGrande'
+  | 'rochaMedia'
+  | 'rochaPequena'
+  | 'explosaoNave'
+  | 'salto'
+  | 'cristal'
+  | 'batida';
 
 export interface AudioService {
   tocar(preset: AudioPreset): void;

@@ -37,6 +37,48 @@ export class RetroAudioEngine implements AudioService {
     return this.ctx;
   }
 
+  private tocarRuido(
+    duracao: number,
+    frequenciaInicial: number,
+    frequenciaFinal: number,
+    volumeMult = 1
+  ): void {
+    const ctx = this.obterContexto();
+    if (!ctx) return;
+
+    try {
+      const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duracao));
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(frequenciaInicial, ctx.currentTime);
+      filter.frequency.linearRampToValueAtTime(frequenciaFinal, ctx.currentTime + duracao);
+
+      const gain = ctx.createGain();
+      const pico = this.volume * volumeMult * 0.32;
+      gain.gain.setValueAtTime(pico, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duracao);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      noise.start();
+      noise.stop(ctx.currentTime + duracao);
+    } catch {
+      // Falha silenciosa em navegadores com bloqueio estrito de áudio
+    }
+  }
+
   ativar(): void {
     const ctx = this.obterContexto();
     if (ctx && ctx.state === 'suspended') {
@@ -345,6 +387,118 @@ export class RetroAudioEngine implements AudioService {
           gain.connect(ctx.destination);
           osc.start(t);
           osc.stop(t + 0.23);
+          break;
+        }
+
+        case 'propulsor': {
+          // Ruído curto de propulsão, repetido enquanto acelera
+          this.tocarRuido(0.09, 420, 160, 0.55);
+          break;
+        }
+
+        case 'rochaGrande':
+        case 'rochaMedia':
+        case 'rochaPequena': {
+          const config =
+            preset === 'rochaGrande'
+              ? { duracao: 0.38, inicio: 650, fim: 45, volume: 1.3 }
+              : preset === 'rochaMedia'
+                ? { duracao: 0.24, inicio: 900, fim: 90, volume: 1.0 }
+                : { duracao: 0.14, inicio: 1300, fim: 160, volume: 0.8 };
+
+          this.tocarRuido(config.duracao, config.inicio, config.fim, config.volume);
+
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(preset === 'rochaGrande' ? 110 : 190, t);
+          osc.frequency.exponentialRampToValueAtTime(38, t + config.duracao);
+
+          gain.gain.setValueAtTime(masterGain * config.volume * 0.8, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + config.duracao);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + config.duracao + 0.01);
+          break;
+        }
+
+        case 'explosaoNave': {
+          // Explosão grande com queda grave
+          this.tocarRuido(0.55, 1600, 35, 1.6);
+
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(240, t);
+          osc.frequency.exponentialRampToValueAtTime(30, t + 0.5);
+
+          gain.gain.setValueAtTime(masterGain * 1.4, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.52);
+          break;
+        }
+
+        case 'salto': {
+          // Varredura ascendente de hiperespaço
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(220, t);
+          osc.frequency.exponentialRampToValueAtTime(1650, t + 0.26);
+
+          gain.gain.setValueAtTime(masterGain, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.29);
+
+          this.tocarRuido(0.18, 300, 2400, 0.5);
+          break;
+        }
+
+        case 'cristal': {
+          // Brilho cristalino de dois tons
+          const notas = [1318.5, 1760];
+          notas.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, t + idx * 0.055);
+
+            gain.gain.setValueAtTime(masterGain * 0.85, t + idx * 0.055);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.055 + 0.16);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(t + idx * 0.055);
+            osc.stop(t + idx * 0.055 + 0.17);
+          });
+          break;
+        }
+
+        case 'batida': {
+          // Batida grave de fundo
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(125, t);
+          osc.frequency.exponentialRampToValueAtTime(40, t + 0.13);
+
+          gain.gain.setValueAtTime(masterGain * 1.1, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.15);
           break;
         }
       }

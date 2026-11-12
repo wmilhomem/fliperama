@@ -8,6 +8,7 @@ import { UpcomingGame } from './shared/types';
 import { hannahGameModule } from './games/hannah';
 import { modeloGameModule } from './games/_modelo';
 import { tatuGameModule } from './games/tatu';
+import { garimpoGameModule } from './games/garimpo';
 
 /**
  * REGISTRO CENTRAL DE JOGOS DO FLIPERAMA
@@ -20,6 +21,7 @@ import { tatuGameModule } from './games/tatu';
 export const JOGOS: GameModule[] = [
   hannahGameModule,
   tatuGameModule,
+  garimpoGameModule,
   modeloGameModule,
 ];
 
