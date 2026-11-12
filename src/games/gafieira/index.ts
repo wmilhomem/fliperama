@@ -6,13 +6,13 @@
 /**
  * JOGO: "Noite na Gafieira" (mesa de pinball da biblioteca compartilhada)
  *
- * Uma noite de samba em uma gafieira carioca dos anos 70: sala de baile,
+ * Uma noite de samba em uma gafieira carioca dos anos 70: salão de baile,
  * bola de espelhos, tamborins, letras de SAMBA e um pandeiro que gira.
  */
 
 import { EngineContext, GameInstance, GameModule } from '../../engine/types';
 import { criarJogoPinball } from '../../shared/pinball';
-import { ALTURA, LARGURA } from './constantes';
+import { ALTURA, LARGURA } from './tuning';
 import { criarMesaGafieira } from './mesa';
 import { criarMusicaSamba } from './musica';
 
@@ -33,6 +33,7 @@ export const gafieiraGameModule: GameModule = {
       'Espaço (ou botão A): segurar para carregar o lançador, soltar para lançar',
       'X (ou botão B): empurrão (3 empurrões seguidos dão tilt)',
       'Toque na metade esquerda/direita da tela: flippers',
+      'D: modo debug (mostra as colisões e os drenos por região)',
       'P: pausar · R: reiniciar · M: som · ESC: voltar ao hub',
     ],
     pontos: [
@@ -48,6 +49,8 @@ export const gafieiraGameModule: GameModule = {
   teclasExtras: {
     KeyZ: 'esquerda',
     Slash: 'direita',
+    // D liga/desliga o modo debug (a ação "cima" não é usada pelo pinball)
+    KeyD: 'cima',
   },
   toqueTela: {
     esquerda: 'esquerda',
@@ -69,6 +72,7 @@ export const gafieiraGameModule: GameModule = {
 
     return criarJogoPinball(ctx, tabela, {
       mensagem: 'MESA DE PINBALL • 3 BOLAS',
+      debug: true,
     });
   },
 };

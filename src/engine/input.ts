@@ -255,8 +255,10 @@ export class UnifiedInputManager {
       this.extrasAtivas('direita') ||
       !!this.touchEstados.direita ||
       gp.direita;
-    const cima = kUp || !!this.touchEstados.cima || gp.cima;
-    const baixo = kDown || !!this.touchEstados.baixo || gp.baixo;
+    const cima =
+      kUp || this.extrasAtivas('cima') || !!this.touchEstados.cima || gp.cima;
+    const baixo =
+      kDown || this.extrasAtivas('baixo') || !!this.touchEstados.baixo || gp.baixo;
     const acao =
       kAction ||
       this.extrasAtivas('acao') ||

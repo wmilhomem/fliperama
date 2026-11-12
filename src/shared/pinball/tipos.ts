@@ -85,6 +85,8 @@ export interface Slingshot extends BaseElemento {
   tipo: 'slingshot';
   vertices: [Ponto, Ponto, Ponto];
   forca: number;
+  /** Índice da aresta que é a face de chute (0 = primeira aresta). */
+  faceChute?: number;
 }
 
 /** Alvo fixo (stand-up target): acende e permanece aceso. */
@@ -169,6 +171,22 @@ export interface Dreno extends BaseElemento {
   altura: number;
 }
 
+/**
+ * Portão de mão única.
+ *
+ * A bola passa livremente subindo (ao ser lançada) e é devolvida para o
+ * campo de jogo se tentar voltar para baixo da pista do lançador.
+ */
+export interface PortaoMaoUnica extends BaseElemento {
+  tipo: 'portao';
+  /** Borda esquerda do portão. */
+  x: number;
+  /** Altura do portão. */
+  y: number;
+  /** Largura do portão. */
+  largura: number;
+}
+
 export type ElementoMesa =
   | BumperPop
   | Slingshot
@@ -179,7 +197,8 @@ export type ElementoMesa =
   | Inlane
   | Outlane
   | Plunger
-  | Dreno;
+  | Dreno
+  | PortaoMaoUnica;
 
 /** Estado de runtime de um bumper. */
 export interface EstadoBumper {
@@ -257,11 +276,26 @@ export interface DefinicaoFlipper {
   pivoX: number;
   pivoY: number;
   comprimento: number;
+  /** Espessura na base do flipper. */
   raio: number;
+  /** Espessura na ponta do flipper (opcional; padrão = `raio`). */
+  raioPonta?: number;
   /** Ângulo de repouso em radianos. */
   anguloRepouso: number;
   /** Ângulo ativo (botão pressionado) em radianos. */
   anguloAtivo: number;
+}
+
+/**
+ * Região do dreno usada pelo modo debug para contar por onde a bola saiu.
+ */
+export interface RegiaoDreno {
+  id: string;
+  rotulo: string;
+  x: number;
+  y: number;
+  largura: number;
+  altura: number;
 }
 
 /** Lâmpada do painel (TILT, GAME OVER, ESPECIAL...). */
@@ -353,6 +387,10 @@ export interface DefinicaoMesa {
   bolasPorPartida?: number;
   /** Limite do multiplicador de bônus (padrão 5). */
   multiplicadorMaximo?: number;
+  /** Segundos de proteção de bola ("ball save") após o lançamento. */
+  ballSave?: { segundos?: number; mensagem?: string };
+  /** Regiões do dreno usadas pelo contador do modo debug. */
+  regioesDreno?: RegiaoDreno[];
   geometria: Parede[];
   elementos: ElementoMesa[];
   flippers: [DefinicaoFlipper, DefinicaoFlipper];
@@ -361,6 +399,11 @@ export interface DefinicaoMesa {
   regras: RegrasMesa;
   /** Cenário desenhado atrás do campo (piso, cortinas, palco). */
   desenharCenario?(g: CanvasRenderingContext2D, ctx: ContextoDesenho): void;
+  /**
+   * Camada estática pré-renderizada (cenário + decoração do campo).
+   * É desenhada UMA vez em um canvas fora da tela e copiada a cada quadro.
+   */
+  desenharCamadaEstatica?(g: CanvasRenderingContext2D, ctx: ContextoDesenho): void;
   /** Arte customizada de um elemento (usa a arte padrão se omitido). */
   desenharElemento?(
     g: CanvasRenderingContext2D,

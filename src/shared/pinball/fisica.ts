@@ -68,13 +68,25 @@ function raizesQuadratica(a: number, b: number, c: number): number[] {
 
 /** Ponto da reta mais próximo de `p`. */
 export function pontoMaisProximo(p: Ponto, a: Ponto, b: Ponto): Ponto {
+  return pontoMaisProximoComParametro(p, a, b).ponto;
+}
+
+/**
+ * Ponto da reta mais próximo de `p`, com o parâmetro `t` (0 = ponto A,
+ * 1 = ponto B). Usado pelos flippers cônicos, que mudam de espessura.
+ */
+export function pontoMaisProximoComParametro(
+  p: Ponto,
+  a: Ponto,
+  b: Ponto
+): { ponto: Ponto; t: number } {
   const abx = b.x - a.x;
   const aby = b.y - a.y;
   const len2 = abx * abx + aby * aby;
-  if (len2 < 1e-9) return { x: a.x, y: a.y };
+  if (len2 < 1e-9) return { ponto: { x: a.x, y: a.y }, t: 0 };
   let t = ((p.x - a.x) * abx + (p.y - a.y) * aby) / len2;
   t = Math.max(0, Math.min(1, t));
-  return { x: a.x + abx * t, y: a.y + aby * t };
+  return { ponto: { x: a.x + abx * t, y: a.y + aby * t }, t };
 }
 
 /** Colisão varrida contra um segmento de parede. */

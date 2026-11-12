@@ -12,7 +12,6 @@
  */
 
 import { Bola } from './fisica';
-import { Ponto } from './tipos';
 import {
   AlvoFixo,
   AlvoQueda,
@@ -213,54 +212,59 @@ export function colidirBumper(
   return true;
 }
 
-/** Slingshot: triângulo de borracha com chute lateral. */
+/**
+ * Slingshot: triângulo de borracha com chute lateral.
+ *
+ * As arestas do triângulo são paredes sólidas (definidas na geometria da
+ * mesa). Aqui cuidamos apenas do chute: quando a bola encosta na face de
+ * chute, ganha impulso para o centro do campo.
+ */
 export function colidirSlingshot(
   bola: Bola,
   elemento: Slingshot,
   estado: EstadoSlingshot
 ): boolean {
-  const [a, b, c] = elemento.vertices;
-  if (!pontoDentroDoTriangulo(bola, a, b, c)) return false;
+  const vertices = elemento.vertices;
+  const indiceFace = elemento.faceChute ?? 0;
+  const a = vertices[indiceFace];
+  const b = vertices[(indiceFace + 1) % 3];
+  const c = vertices[(indiceFace + 2) % 3];
 
-  // Face mais próxima para empurrar a bola para fora
-  const faces: Array<[typeof a, typeof b]> = [
-    [a, b],
-    [b, c],
-    [c, a],
-  ];
-  let melhor: { nx: number; ny: number; distancia: number } | null = null;
+  const ex = b.x - a.x;
+  const ey = b.y - a.y;
+  const len = Math.hypot(ex, ey);
+  if (len < 1e-6) return false;
 
-  for (const [p1, p2] of faces) {
-    const ex = p2.x - p1.x;
-    const ey = p2.y - p1.y;
-    const len2 = ex * ex + ey * ey;
-    if (len2 < 1e-9) continue;
-    let t = ((bola.x - p1.x) * ex + (bola.y - p1.y) * ey) / len2;
-    t = Math.max(0, Math.min(1, t));
-    const px = p1.x + ex * t;
-    const py = p1.y + ey * t;
-    const dx = bola.x - px;
-    const dy = bola.y - py;
-    const distancia = Math.hypot(dx, dy);
-    if (!melhor || distancia < melhor.distancia) {
-      const nx = distancia < 1e-6 ? ey : dx / distancia;
-      const ny = distancia < 1e-6 ? -ex : dy / distancia;
-      melhor = { nx, ny, distancia };
-    }
+  // Normal da face, sempre apontando para fora do triângulo.
+  let nx = ey / len;
+  let ny = -ex / len;
+  const meioX = (a.x + b.x) / 2;
+  const meioY = (a.y + b.y) / 2;
+  const distComNormal = (meioX + nx - c.x) ** 2 + (meioY + ny - c.y) ** 2;
+  const distSemNormal = (meioX - c.x) ** 2 + (meioY - c.y) ** 2;
+  if (distComNormal < distSemNormal) {
+    nx = -nx;
+    ny = -ny;
   }
 
-  if (!melhor) return false;
+  // Posição da bola em relação à aresta (t = projeção, s = distância com sinal)
+  const t = ((bola.x - a.x) * ex + (bola.y - a.y) * ey) / (len * len);
+  if (t < -0.1 || t > 1.1) return false;
+  const s = (bola.x - a.x) * nx + (bola.y - a.y) * ny;
 
-  bola.x += melhor.nx * (bola.raio + 2);
-  bola.y += melhor.ny * (bola.raio + 2);
+  // Só o lado de fora da face recebe o chute.
+  if (s < 0 || s > bola.raio + 5) return false;
 
-  const vn = bola.vx * melhor.nx + bola.vy * melhor.ny;
+  bola.x += nx * (bola.raio + 2 - s);
+  bola.y += ny * (bola.raio + 2 - s);
+
+  const vn = bola.vx * nx + bola.vy * ny;
   if (vn < 0) {
-    bola.vx -= 1.35 * vn * melhor.nx;
-    bola.vy -= 1.35 * vn * melhor.ny;
+    bola.vx -= 1.3 * vn * nx;
+    bola.vy -= 1.3 * vn * ny;
   }
-  bola.vx += melhor.nx * elemento.forca;
-  bola.vy += melhor.ny * elemento.forca;
+  bola.vx += nx * elemento.forca;
+  bola.vy += ny * elemento.forca;
 
   estado.animacao = 1;
   return true;
@@ -430,16 +434,7 @@ function bolaSobreRetangulo(
   );
 }
 
-function pontoDentroDoTriangulo(p: Ponto, a: Ponto, b: Ponto, c: Ponto): boolean {
-  const sinal = (p1: typeof a, p2: typeof b, p3: typeof c) =>
-    (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
-  const d1 = sinal(p, a, b);
-  const d2 = sinal(p, b, c);
-  const d3 = sinal(p, c, a);
-  const temNegativo = d1 < 0 || d2 < 0 || d3 < 0;
-  const temPositivo = d1 > 0 || d2 > 0 || d3 > 0;
-  return !(temNegativo && temPositivo);
-}
+
 
 /* ------------------------------------------------------------------ */
 /* DESENHO PADRÃO                                                     */

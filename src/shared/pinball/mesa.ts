@@ -7,22 +7,32 @@
  * Carregador/loader de mesa de pinball.
  *
  * A biblioteca carrega a mesa (dados), roda a física, trata as regras comuns
- * (tilt, bolas, bônus, multiplicador) e desenha os elementos animados.
- * A mesa só fornece geometria, elementos, regras e arte.
+ * (tilt, bolas, bônus, multiplicador, ball save) e desenha os elementos
+ * animados. A mesa só fornece geometria, elementos, regras e arte.
  */
 
 import { EngineContext, GameInstance, InputState } from '../../engine/types';
 import {
+  BALL_SAVE_PADRAO,
   FORCA_EMPURRAO,
+  FORCA_PLUNGER_MINIMA,
   GRAVIDADE_PADRAO,
   IMPULSO_ANTI_TRAVA,
   PASSO_FIXO,
   RAIO_BOLA,
   SUBPASSOS_POR_QUADRO,
+  TEMPO_AVISO_BOLA_SALVA,
+  TEMPO_CARGA_PLUNGER,
   TEMPO_PARADO_LIMITE,
   VELOCIDADE_MAXIMA,
   VELOCIDADE_PARADA,
-} from './constantes';
+} from './tuning';
+import {
+  Bola,
+  aplicarGravidade,
+  criarBola,
+  moverBola,
+} from './fisica';
 import {
   atualizarElementos,
   colidirAlvo,
@@ -38,15 +48,19 @@ import {
   desenharElementoPadrao,
   resetarElementos,
 } from './elementos';
-import { Bola, aplicarGravidade, criarBola, moverBola } from './fisica';
-import { Flipper, atualizarFlipper, colidirFlipper, criarFlipper, desenharFlipper } from './flippers';
+import {
+  Flipper,
+  atualizarFlipper,
+  colidirFlipper,
+  criarFlipper,
+  desenharFlipper,
+} from './flippers';
 import { desenharPlacar } from './placar';
 import { RegrasComuns } from './regras';
 import {
   ContextoDesenho,
   ContextoRegra,
   DefinicaoMesa,
-  ElementoMesa,
   EstadoBumper,
   EstadoCanal,
   EstadoElemento,
@@ -55,6 +69,8 @@ import {
   EstadoSlingshot,
   EstadoSpinner,
   Plunger,
+  Ponto,
+  PortaoMaoUnica,
 } from './tipos';
 
 export interface OpcoesMesa {
@@ -62,6 +78,8 @@ export interface OpcoesMesa {
   mensagem?: string;
   /** Callback opcional de inspeção (usado em testes e depuração). */
   aoInspecionar?: (dados: InspecaoMesa) => void;
+  /** Ativa o modo debug pela tecla mapeada em `input.cima` (padrão: true). */
+  debug?: boolean;
 }
 
 /** Dados expostos pelo callback de inspeção. */
@@ -72,6 +90,8 @@ export interface InspecaoMesa {
   pontuacao: number;
   bolasRestantes: number;
   multiplicador: number;
+  debug: boolean;
+  drenosPorRegiao: Record<string, number>;
 }
 
 export function criarJogoPinball(
@@ -95,6 +115,10 @@ export function criarJogoPinball(
   const elementoPlunger = tabela.elementos.find(
     (elemento): elemento is Plunger => elemento.tipo === 'plunger'
   );
+  const portoes = tabela.elementos.filter(
+    (elemento): elemento is PortaoMaoUnica => elemento.tipo === 'portao'
+  );
+  const ballSaveSegundos = tabela.ballSave?.segundos ?? BALL_SAVE_PADRAO;
 
   let bola: Bola | null = null;
   let cargaPlunger = 0;
@@ -102,9 +126,23 @@ export function criarJogoPinball(
   let plungerLiberado = false;
   let tempoGlobal = 0;
   let tempoEstado = 0;
+  let tempoDesdeLancamento = 0;
+  let bolaLancada = false;
+  let tempoAvisoBolaSalva = 0;
   let tremor = 0;
   let ultimoImpacto: Record<string, number> = {};
   let destroyed = false;
+
+  // Modo debug e contadores de dreno por região
+  let debugAtivo = false;
+  const drenosPorRegiao: Record<string, number> = {};
+
+
+  // Rastro curto da bola
+  const rastro: Ponto[] = [];
+
+  // Camada estática pré-renderizada
+  let camadaEstatica: HTMLCanvasElement | null = null;
 
   const contextoRegra: ContextoRegra = {
     pontuar(valor: number) {
@@ -199,7 +237,10 @@ export function criarJogoPinball(
     cargaPlunger = 0;
     plungerPressionado = false;
     plungerLiberado = false;
+    bolaLancada = false;
+    tempoDesdeLancamento = 0;
     ultimoImpacto = {};
+    rastro.length = 0;
     resetarElementos(estadosElementos, tabela.elementos);
     regras.estado.atireDeNovo = false;
     regras.estado.luzes.atireDeNovo = false;
@@ -220,40 +261,42 @@ export function criarJogoPinball(
     });
     tempoEstado = 0;
     tremor = 0;
+    for (const chave of Object.keys(drenosPorRegiao)) delete drenosPorRegiao[chave];
     servirBola();
-  }
-
-  function reiniciarPartida(): void {
-    iniciarPartida();
   }
 
   function lancarBola(): void {
     if (!bola || !elementoPlunger) return;
-    const forca = elementoPlunger.forcaMax * (0.62 + 0.38 * cargaPlunger);
+    const forca =
+      elementoPlunger.forcaMax *
+      (FORCA_PLUNGER_MINIMA + (1 - FORCA_PLUNGER_MINIMA) * cargaPlunger);
     bola.naMola = false;
     bola.vx = 0;
     bola.vy = -forca;
     bola.tempoParada = 0;
+    bolaLancada = true;
+    tempoDesdeLancamento = 0;
     cargaPlunger = 0;
     plungerPressionado = false;
     ctx.audio.tocar('plunger');
   }
 
-  /** Devolve a bola para o lançador (quando ela volta para a canaleta). */
-  function rearmarLancador(): void {
-    if (!bola || !elementoPlunger || bola.naMola) return;
-    if (bola.x < elementoPlunger.x - 24) return;
-    if (bola.y < elementoPlunger.y - 40) return;
-    // Só quando a bola está voltando (caindo de volta para a canaleta).
-    if (bola.vy <= 0) return;
-    bola.naMola = true;
-    bola.vx = 0;
-    bola.vy = 0;
-    bola.x = elementoPlunger.x;
-    bola.y = elementoPlunger.y;
-    bola.tempoParada = 0;
-    cargaPlunger = 0;
-    plungerPressionado = false;
+  /** Registra por onde a bola saiu (usado pelo contador do modo debug). */
+  function registrarDreno(): void {
+    if (!bola) return;
+    const regioes = tabela.regioesDreno ?? [];
+    for (const regiao of regioes) {
+      if (
+        bola.x >= regiao.x &&
+        bola.x <= regiao.x + regiao.largura &&
+        bola.y >= regiao.y &&
+        bola.y <= regiao.y + regiao.altura
+      ) {
+        drenosPorRegiao[regiao.id] = (drenosPorRegiao[regiao.id] ?? 0) + 1;
+        return;
+      }
+    }
+    drenosPorRegiao.outros = (drenosPorRegiao.outros ?? 0) + 1;
   }
 
   function fimDaBola(motivo: 'dreno' | 'tilt'): void {
@@ -262,6 +305,15 @@ export function criarJogoPinball(
     if (motivo === 'tilt') {
       ctx.audio.tocar('tilt');
       tabela.regras.aoTilt?.(contextoRegra);
+    }
+
+    // Ball save: a bola volta para o lançador sem custar bola
+    if (motivo === 'dreno' && bolaLancada && tempoDesdeLancamento < ballSaveSegundos) {
+      regras.acenderLuz('bolaSalva', true);
+      tempoAvisoBolaSalva = TEMPO_AVISO_BOLA_SALVA;
+      tempoEstado = 0;
+      servirBola();
+      return;
     }
 
     if (regras.estado.atireDeNovo) {
@@ -315,12 +367,41 @@ export function criarJogoPinball(
     }
   }
 
+  /**
+   * Portão de mão única: a bola sobe livremente, mas não pode voltar
+   * para baixo da pista do lançador — ela é devolvida para o campo.
+   */
+  function atualizarPortoes(ultimoY: number): void {
+    if (!bola) return;
+    for (const portao of portoes) {
+      const dentroX =
+        bola.x > portao.x - bola.raio && bola.x < portao.x + portao.largura + bola.raio;
+      if (!dentroX) continue;
+      if (bola.y >= portao.y && ultimoY < portao.y) {
+        // Tentou voltar para a pista: devolve a bola para o campo de jogo.
+        bola.y = portao.y - bola.raio - 0.2;
+        bola.vy = -Math.abs(bola.vy) * 0.4 - 40;
+        bola.vx = -Math.abs(bola.vx) * 0.3 - 260;
+      }
+    }
+  }
+
   function atualizarJogo(dt: number, input: InputState): void {
     regras.tick(dt);
     tempoGlobal += dt;
     tremor = Math.max(0, tremor - dt * 3.2);
 
+    if (opcoes.debug !== false && input.cimaPressionada) {
+      debugAtivo = !debugAtivo;
+    }
+
     if (input.acao2Pressionada) aplicarEmpurrão();
+
+    // Aviso de bola salva (pisca por alguns segundos)
+    if (tempoAvisoBolaSalva > 0) {
+      tempoAvisoBolaSalva -= dt;
+      if (tempoAvisoBolaSalva <= 0) regras.acenderLuz('bolaSalva', false);
+    }
 
     const travado = regras.estado.tilt;
     atualizarFlipper(flippers[0], input.esquerda && !travado, dt);
@@ -331,14 +412,18 @@ export function criarJogoPinball(
     if (bola && bola.naMola && elementoPlunger && plungerLiberado) {
       if (input.acao) {
         plungerPressionado = true;
-        cargaPlunger = Math.min(1, cargaPlunger + dt / 0.9);
+        cargaPlunger = Math.min(1, cargaPlunger + dt / TEMPO_CARGA_PLUNGER);
       } else if (plungerPressionado) {
         lancarBola();
       }
     }
 
     if (bola) {
+      if (bolaLancada) tempoDesdeLancamento += dt;
       const bloqueado = regras.estado.tilt;
+      let sobreFlipper = false;
+      const yAntesDoQuadro = bola.y;
+
       for (let subpasso = 0; subpasso < SUBPASSOS_POR_QUADRO; subpasso++) {
         if (bola.naMola) {
           bola.vx = 0;
@@ -350,8 +435,8 @@ export function criarJogoPinball(
         aplicarGravidade(bola, gravidade, PASSO_FIXO);
         moverBola(bola, PASSO_FIXO, tabela.geometria);
         if (!bloqueado) {
-          colidirFlipper(bola, flippers[0]);
-          colidirFlipper(bola, flippers[1]);
+          if (colidirFlipper(bola, flippers[0])) sobreFlipper = true;
+          if (colidirFlipper(bola, flippers[1])) sobreFlipper = true;
         }
         for (const elemento of tabela.elementos) {
           const estado = estadosElementos[elemento.id];
@@ -367,7 +452,7 @@ export function criarJogoPinball(
               break;
             }
             case 'slingshot': {
-              const acertou = colidirSlingshot(bola,elemento, estado as EstadoSlingshot);
+              const acertou = colidirSlingshot(bola, elemento, estado as EstadoSlingshot);
               if (acertou && podeDisparar(elemento.id, 0.2)) {
                 ctx.audio.tocar('slingshot');
                 if (elemento.pontos) contextoRegra.pontuar(elemento.pontos);
@@ -423,6 +508,9 @@ export function criarJogoPinball(
         }
       }
 
+      // Portões de mão única (o Y anterior vem de antes dos subpassos)
+      atualizarPortoes(yAntesDoQuadro);
+
       // Sensores (uma leitura por quadro)
       for (const elemento of tabela.elementos) {
         const estado = estadosElementos[elemento.id];
@@ -463,6 +551,7 @@ export function criarJogoPinball(
           }
           case 'dreno': {
             if (detectarDreno(bola, elemento)) {
+              registrarDreno();
               fimDaBola('dreno');
             }
             break;
@@ -482,17 +571,15 @@ export function criarJogoPinball(
         bola.x < -24 ||
         bola.x > tabela.largura + 24
       ) {
+        registrarDreno();
         bola = null;
         fimDaBola('dreno');
         return;
       }
 
-      // Se a bola voltou para a canaleta, devolve para o lançador.
-      rearmarLancador();
-
-      // Anti-travamento: se a bola ficar parada demais, aplica um empurrão.
+      // Anti-travamento: bola parada por muito tempo (fora dos flippers).
       const velocidade = Math.hypot(bola.vx, bola.vy);
-      if (velocidade < VELOCIDADE_PARADA && !bola.naMola) {
+      if (velocidade < VELOCIDADE_PARADA && !bola.naMola && !sobreFlipper) {
         bola.tempoParada += dt;
         if (bola.tempoParada > TEMPO_PARADO_LIMITE) {
           bola.tempoParada = 0;
@@ -509,6 +596,10 @@ export function criarJogoPinball(
         bola.vx *= escala;
         bola.vy *= escala;
       }
+
+      // Rastro curto da bola
+      rastro.push({ x: bola.x, y: bola.y });
+      if (rastro.length > 7) rastro.shift();
     }
 
     atualizarElementos(estadosElementos, tabela.elementos, dt);
@@ -527,6 +618,8 @@ export function criarJogoPinball(
       pontuacao: regras.estado.pontuacao,
       bolasRestantes: regras.estado.bolasRestantes,
       multiplicador: regras.estado.multiplicador,
+      debug: debugAtivo,
+      drenosPorRegiao: { ...drenosPorRegiao },
     });
 
     // Lâmpada de recorde (acende quando o jogador supera o recorde salvo)
@@ -560,6 +653,20 @@ export function criarJogoPinball(
     }
   }
 
+  function prepararCamadaEstatica(): void {
+    if (typeof document === 'undefined') return;
+    if (camadaEstatica) return;
+    if (!tabela.desenharCamadaEstatica) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = tabela.largura;
+    canvas.height = tabela.altura;
+    const g = canvas.getContext('2d');
+    if (!g) return;
+    g.imageSmoothingEnabled = false;
+    tabela.desenharCamadaEstatica(g, contextoDesenho());
+    camadaEstatica = canvas;
+  }
+
   function desenharParedes(g: CanvasRenderingContext2D): void {
     g.save();
     g.lineCap = 'round';
@@ -582,14 +689,15 @@ export function criarJogoPinball(
         }
         g.stroke();
       };
-      g.strokeStyle = 'rgba(20, 6, 40, 0.95)';
-      g.lineWidth = 9;
+      // Contorno grosso e escuro + cor viva (para a bola sempre destacar)
+      g.strokeStyle = 'rgba(12, 4, 28, 0.95)';
+      g.lineWidth = 10;
       traco();
       g.strokeStyle = tabela.corTema;
-      g.lineWidth = 4;
+      g.lineWidth = 5;
       traco();
-      g.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-      g.lineWidth = 1;
+      g.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+      g.lineWidth = 1.5;
       traco();
     }
     g.restore();
@@ -608,9 +716,25 @@ export function criarJogoPinball(
     }
   }
 
+  function desenharRastro(g: CanvasRenderingContext2D): void {
+    if (rastro.length < 2) return;
+    g.save();
+    for (let i = 0; i < rastro.length - 1; i++) {
+      const t = (i + 1) / rastro.length;
+      g.globalAlpha = t * 0.35;
+      g.fillStyle = '#C7D2FE';
+      const p = rastro[i];
+      g.beginPath();
+      g.arc(p.x, p.y, RAIO_BOLA * 0.8 * t, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.restore();
+  }
+
   function desenharBola(g: CanvasRenderingContext2D): void {
     if (!bola) return;
     const ctxDesenho = contextoDesenho();
+    desenharRastro(g);
     if (tabela.desenharBola) {
       tabela.desenharBola(g, bola, ctxDesenho);
       return;
@@ -632,6 +756,97 @@ export function criarJogoPinball(
     desenharFlipper(g, flippers[1], '#F472B6', '#2A1145');
   }
 
+  /** Modo debug: geometria de colisão, raios e contadores de dreno. */
+  function desenharDebug(g: CanvasRenderingContext2D): void {
+    if (!debugAtivo) return;
+    g.save();
+    g.lineWidth = 1;
+
+    // Paredes
+    g.strokeStyle = 'rgba(0, 255, 255, 0.55)';
+    for (const parede of tabela.geometria) {
+      g.beginPath();
+      if (parede.tipo === 'segmento') {
+        g.moveTo(parede.x1, parede.y1);
+        g.lineTo(parede.x2, parede.y2);
+      } else {
+        g.arc(
+          parede.cx,
+          parede.cy,
+          parede.raio,
+          parede.anguloInicio,
+          parede.anguloFim,
+          parede.sentido === -1
+        );
+      }
+      g.stroke();
+    }
+
+    // Raios dos elementos
+    for (const elemento of tabela.elementos) {
+      if (elemento.tipo === 'bumper') {
+        g.strokeStyle = 'rgba(255, 214, 102, 0.8)';
+        g.beginPath();
+        g.arc(elemento.x, elemento.y, elemento.raio, 0, Math.PI * 2);
+        g.stroke();
+      } else if (elemento.tipo === 'alvoFixo' || elemento.tipo === 'alvoQueda') {
+        g.strokeStyle = 'rgba(255, 214, 102, 0.8)';
+        g.strokeRect(
+          elemento.x - elemento.largura / 2,
+          elemento.y - elemento.altura / 2,
+          elemento.largura,
+          elemento.altura
+        );
+      } else if (elemento.tipo === 'slingshot') {
+        g.strokeStyle = 'rgba(255, 214, 102, 0.8)';
+        g.beginPath();
+        g.moveTo(elemento.vertices[0].x, elemento.vertices[0].y);
+        g.lineTo(elemento.vertices[1].x, elemento.vertices[1].y);
+        g.lineTo(elemento.vertices[2].x, elemento.vertices[2].y);
+        g.closePath();
+        g.stroke();
+      } else if (elemento.tipo === 'dreno' || elemento.tipo === 'outlane' || elemento.tipo === 'inlane') {
+        g.strokeStyle = 'rgba(255, 106, 106, 0.8)';
+        g.strokeRect(
+          elemento.x - elemento.largura / 2,
+          elemento.y - elemento.altura / 2,
+          elemento.largura,
+          elemento.altura
+        );
+      }
+    }
+
+    // Pivôs dos flippers
+    g.fillStyle = '#22D3EE';
+    for (const flipper of flippers) {
+      g.beginPath();
+      g.arc(flipper.definicao.pivoX, flipper.definicao.pivoY, 5, 0, Math.PI * 2);
+      g.fill();
+    }
+
+    // Contadores de dreno
+    g.font = '12px "Press Start 2P", monospace';
+    g.textAlign = 'left';
+    g.textBaseline = 'top';
+    g.fillStyle = 'rgba(0,0,0,0.75)';
+    g.fillRect(8, 104, 300, 24 + Object.keys(drenosPorRegiao).length * 16);
+    g.fillStyle = '#FACC15';
+    let linha = 110;
+    g.fillText('DRENOS', 16, linha);
+    linha += 16;
+    for (const regiao of tabela.regioesDreno ?? []) {
+      g.fillText(
+        `${regiao.rotulo}: ${drenosPorRegiao[regiao.id] ?? 0}`,
+        16,
+        linha
+      );
+      linha += 16;
+    }
+    g.fillText(`OUTROS: ${drenosPorRegiao.outros ?? 0}`, 16, linha);
+
+    g.restore();
+  }
+
   function desenharTitulo(g: CanvasRenderingContext2D): void {
     g.save();
     g.fillStyle = 'rgba(6, 2, 16, 0.88)';
@@ -640,39 +855,39 @@ export function criarJogoPinball(
     g.textAlign = 'center';
     g.textBaseline = 'top';
     g.fillStyle = tabela.corTema;
-    g.fillRect(80, 150, tabela.largura - 160, 3);
+    g.fillRect(120, 150, tabela.largura - 240, 3);
 
-    g.font = '26px "Press Start 2P", monospace';
+    g.font = '30px "Press Start 2P", monospace';
     g.fillStyle = '#FFD166';
-    g.fillText('FLIPERAMA', tabela.largura / 2, 190);
+    g.fillText('FLIPERAMA', tabela.largura / 2, 186);
 
-    g.font = '16px "Press Start 2P", monospace';
+    g.font = '20px "Press Start 2P", monospace';
     g.fillStyle = tabela.corTema;
     const palavras = tabela.titulo.toUpperCase().split(' ');
     palavras.forEach((palavra, indice) => {
-      g.fillText(palavra, tabela.largura / 2, 240 + indice * 26);
+      g.fillText(palavra, tabela.largura / 2, 236 + indice * 30);
     });
 
-    g.font = '8px "Press Start 2P", monospace';
+    g.font = '12px "Press Start 2P", monospace';
     g.fillStyle = '#E9D5FF';
-    g.fillText('MESA DE PINBALL', tabela.largura / 2, 240 + palavras.length * 26 + 14);
+    g.fillText('MESA DE PINBALL', tabela.largura / 2, 236 + palavras.length * 30 + 16);
 
-    g.font = '7px "Press Start 2P", monospace';
     g.fillStyle = '#C4B5FD';
-    g.fillText('SETAS / WASD: FLIPPERS', tabela.largura / 2, 400);
-    g.fillText('ESPAÇO: LANÇADOR', tabela.largura / 2, 418);
-    g.fillText('X / SHIFT: EMPURRÃO', tabela.largura / 2, 436);
-    g.fillText('P PAUSA  R RESET  ESC HUB', tabela.largura / 2, 454);
+    g.fillText('SETAS / Z / BARRA: FLIPPERS', tabela.largura / 2, 430);
+    g.fillText('ESPAÇO: LANÇADOR', tabela.largura / 2, 452);
+    g.fillText('X: EMPURRÃO', tabela.largura / 2, 474);
+    g.fillText('D: MODO DEBUG', tabela.largura / 2, 496);
+    g.fillText('P PAUSA  R RESET  ESC HUB', tabela.largura / 2, 518);
 
     if (opcoes.mensagem) {
       g.fillStyle = '#FDA4AF';
-      g.fillText(opcoes.mensagem, tabela.largura / 2, 486);
+      g.fillText(opcoes.mensagem, tabela.largura / 2, 552);
     }
 
     g.globalAlpha = 0.6 + Math.sin(tempoGlobal * 3.2) * 0.35;
-    g.font = '9px "Press Start 2P", monospace';
+    g.font = '12px "Press Start 2P", monospace';
     g.fillStyle = '#FFFFFF';
-    g.fillText('PRESSIONE ESPAÇO / TOQUE', tabela.largura / 2, 540);
+    g.fillText('PRESSIONE ESPAÇO / TOQUE', tabela.largura / 2, 600);
     g.globalAlpha = 1;
     g.restore();
   }
@@ -683,19 +898,33 @@ export function criarJogoPinball(
     g.fillRect(0, 0, tabela.largura, tabela.altura);
     g.textAlign = 'center';
     g.textBaseline = 'top';
-    g.font = '16px "Press Start 2P", monospace';
+    g.font = '20px "Press Start 2P", monospace';
     g.fillStyle = '#FFD166';
     g.fillText('FIM DE BOLA', tabela.largura / 2, 300);
-    g.font = '10px "Press Start 2P", monospace';
+    g.font = '12px "Press Start 2P", monospace';
     g.fillStyle = '#F5D0FE';
     g.fillText(`BÔNUS ${regras.estado.multiplicador}X`, tabela.largura / 2, 340);
-    g.font = '22px "Press Start 2P", monospace';
+    g.font = '26px "Press Start 2P", monospace';
     g.fillStyle = '#22D3EE';
     g.fillText(
       Math.floor(regras.estado.bonusAnimado).toString().padStart(6, '0'),
       tabela.largura / 2,
       372
     );
+    g.restore();
+  }
+
+  function desenharAvisoBolaSalva(g: CanvasRenderingContext2D): void {
+    if (!regras.luz('bolaSalva')) return;
+    if (Math.floor(tempoGlobal * 6) % 2 === 0) return;
+    g.save();
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.font = '16px "Press Start 2P", monospace';
+    g.fillStyle = 'rgba(6, 2, 16, 0.8)';
+    g.fillRect(tabela.largura / 2 - 110, 180, 220, 34);
+    g.fillStyle = '#22D3EE';
+    g.fillText('BOLA SALVA', tabela.largura / 2, 197);
     g.restore();
   }
 
@@ -713,6 +942,7 @@ export function criarJogoPinball(
         fase: 1,
       });
       bola = null;
+      prepararCamadaEstatica();
     },
 
     reiniciar() {
@@ -772,11 +1002,19 @@ export function criarJogoPinball(
       g.rect(0, tabela.painelAltura, tabela.largura, tabela.altura - tabela.painelAltura);
       g.clip();
       g.translate(tremorX, tremorY);
+
+      if (camadaEstatica) {
+        g.drawImage(camadaEstatica, 0, 0);
+      }
+
+      // Camada animada (luzes, feixes, decoração que se move)
       tabela.desenharCenario?.(g, contextoDesenho());
+
       desenharParedes(g);
       desenharElementos(g);
       desenharFlippers(g);
       desenharBola(g);
+      desenharDebug(g);
       g.restore();
 
       // Painel de placar
@@ -784,6 +1022,8 @@ export function criarJogoPinball(
       tabela.desenharPainel?.(g, contextoDesenho());
       desenharPlacar(g, tabela, regras.estado, tempoGlobal);
       g.restore();
+
+      desenharAvisoBolaSalva(g);
 
       if (regras.estado.fase === 'titulo') {
         desenharTitulo(g);
@@ -803,6 +1043,7 @@ export function criarJogoPinball(
       destroyed = true;
       bola = null;
       ultimoImpacto = {};
+      camadaEstatica = null;
       for (const estado of Object.values(estadosElementos)) {
         if (estado.tipo === 'spinner') estado.velocidade = 0;
       }

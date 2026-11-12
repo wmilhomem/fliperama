@@ -5,11 +5,15 @@
 
 /**
  * Painel de placar de pinball: visores de 6 dígitos em display de 7 segmentos,
- * lâmpadas (TILT, GAME OVER, RECORDE...) e indicador de bola.
+ * lâmpadas (TILT, GAME OVER, BOLA SALVA...) e indicador de bola.
+ *
+ * O painel ocupa a faixa de cima do gabinete (96 px). A linha 1 (0..40) é
+ * desenhada pela mesa (vidro traseiro); a linha 2 (40..96) é o placar.
  */
 
 import { DefinicaoMesa, EstadoMesa } from './tipos';
 
+/** Máscara de 7 segmentos (a,b,c,d,e,f,g). */
 const SEGMENTOS: Record<string, number> = {
   '0': 0b0111111,
   '1': 0b0000110,
@@ -25,6 +29,14 @@ const SEGMENTOS: Record<string, number> = {
   ' ': 0b0000000,
 };
 
+/** Tamanho do dígito de 7 segmentos. */
+const DIGITO_LARGURA = 14;
+const DIGITO_ALTURA = 24;
+const DIGITO_ESPACO = 4;
+
+/** Tamanho mínimo de fonte do painel (legibilidade). */
+export const FONTE_PAINEL = 12;
+
 /** Converte um número em string de 6 dígitos com zeros à esquerda. */
 export function formatarSeisDigitos(valor: number): string {
   const inteiro = Math.max(0, Math.floor(valor));
@@ -37,26 +49,23 @@ export function desenharDigito(
   digito: string,
   x: number,
   y: number,
-  largura: number,
-  altura: number,
   corAtivo: string,
   corInativo: string
 ): void {
   const mascara = SEGMENTOS[digito] ?? 0;
-  const espessura = 2;
-  const vertical = Math.max(2, Math.floor((altura - espessura * 3) / 2));
-  const meiaLargura = largura - espessura;
+  const w = DIGITO_LARGURA;
+  const h = DIGITO_ALTURA;
+  const t = 3;
+  const meia = 7;
 
   const segmentos: Array<[number, number, number, number]> = [
-    // horizontais: superior, meio, inferior
-    [espessura, 0, meiaLargura, espessura],
-    [espessura, Math.floor((altura - espessura) / 2), meiaLargura, espessura],
-    [espessura, altura - espessura, meiaLargura, espessura],
-    // verticais: superior esquerda, superior direita, inferior esquerda, inferior direita
-    [0, espessura, espessura, vertical],
-    [largura - espessura, espessura, espessura, vertical],
-    [0, altura - espessura - vertical, espessura, vertical],
-    [largura - espessura, altura - espessura - vertical, espessura, vertical],
+    [t, 0, w - 2 * t, t], // superior
+    [t, Math.floor((h - t) / 2), w - 2 * t, t], // meio
+    [t, h - t, w - 2 * t, t], // inferior
+    [0, t, t, meia], // superior esquerda
+    [w - t, t, t, meia], // superior direita
+    [0, h - t - meia, t, meia], // inferior esquerda
+    [w - t, h - t - meia, t, meia], // inferior direita
   ];
 
   for (let i = 0; i < segmentos.length; i++) {
@@ -66,7 +75,7 @@ export function desenharDigito(
   }
 }
 
-/** Desenha um visor completo de 6 dígitos. */
+/** Desenha um visor completo de 6 dígitos com o rótulo acima. */
 export function desenharVisor(
   g: CanvasRenderingContext2D,
   valor: number,
@@ -79,23 +88,19 @@ export function desenharVisor(
 ): void {
   g.save();
   g.textAlign = 'left';
-  g.textBaseline = 'alphabetic';
-  g.font = '6px "Press Start 2P", monospace';
+  g.textBaseline = 'top';
+  g.font = `${FONTE_PAINEL}px "Press Start 2P", monospace`;
   g.fillStyle = corRotulo;
   g.fillText(rotulo, x, y);
 
   const digitos = formatarSeisDigitos(valor);
-  const larguraDigito = 9;
-  const espaco = 2;
-  const inicioY = y + 4;
+  const inicioY = y + FONTE_PAINEL + 4;
   for (let i = 0; i < digitos.length; i++) {
     desenharDigito(
       g,
       digitos[i],
-      x + i * (larguraDigito + espaco),
+      x + i * (DIGITO_LARGURA + DIGITO_ESPACO),
       inicioY,
-      larguraDigito,
-      16,
       corAtivo,
       corInativo
     );
@@ -112,10 +117,6 @@ export function desenharPlacar(
 ): void {
   const largura = tabela.largura;
 
-  const colunaVisor = 12;
-  const linhaVisor = 40;
-  const larguraColuna = 92;
-
   const valores: Record<string, number> = {
     jogador1: estado.pontuacao,
     recorde: estado.recorde,
@@ -130,18 +131,19 @@ export function desenharPlacar(
     multiplicador: 'MULTIPL.',
   };
 
+  // Visores na linha 2 do painel (y = 40..96)
   tabela.visores.forEach((visor, indice) => {
     const id = visor.id in valores ? visor.id : `visor${indice}`;
     const valor = valores[id] ?? 0;
-    const x = colunaVisor + visor.coluna * larguraColuna;
-    const y = 8 + visor.linha * linhaVisor;
+    const x = 12 + visor.coluna * 124;
+    const y = 42;
 
     // Carcaça do visor
-    g.fillStyle = 'rgba(6, 2, 16, 0.88)';
-    g.fillRect(x - 5, y - 7, 76, 32);
-    g.strokeStyle = 'rgba(236, 72, 153, 0.35)';
+    g.fillStyle = 'rgba(6, 2, 16, 0.9)';
+    g.fillRect(x - 6, y - 4, 114, 50);
+    g.strokeStyle = 'rgba(236, 72, 153, 0.45)';
     g.lineWidth = 1;
-    g.strokeRect(x - 4.5, y - 6.5, 75, 31);
+    g.strokeRect(x - 5.5, y - 3.5, 113, 49);
 
     desenharVisor(
       g,
@@ -150,54 +152,61 @@ export function desenharPlacar(
       y,
       textosVisor[id] ?? visor.rotulo,
       '#FFD166',
-      'rgba(120, 86, 170, 0.22)',
+      'rgba(120, 86, 170, 0.25)',
       '#F5D0FE'
     );
   });
 
-  // Lâmpadas do painel
-  g.textAlign = 'center';
+  // Bloco BOLA / BÔNUS
+  g.textAlign = 'left';
   g.textBaseline = 'top';
-  g.font = '5px "Press Start 2P", monospace';
-  for (const luz of tabela.luzes) {
-    const acesa = estado.luzes[luz.id] === true;
-    const cor = acesa ? '#FFD166' : 'rgba(120, 86, 170, 0.25)';
-    g.fillStyle = cor;
-    g.beginPath();
-    g.arc(luz.x, luz.y, 4, 0, Math.PI * 2);
-    g.fill();
-    if (acesa) {
-      g.globalAlpha = 0.25 + Math.sin(tempo * 8) * 0.15;
-      g.beginPath();
-      g.arc(luz.x, luz.y, 7, 0, Math.PI * 2);
-      g.fill();
-      g.globalAlpha = 1;
-    }
-    g.fillStyle = acesa ? '#FFE9A8' : 'rgba(200, 180, 220, 0.5)';
-    g.fillText(luz.rotulo, luz.x, luz.y + 7);
-  }
-
-  // Indicador de bola
-  const bolaX = 420;
-  const bolaY = 14;
-  g.textAlign = 'center';
-  g.textBaseline = 'top';
-  g.font = '6px "Press Start 2P", monospace';
+  g.font = `${FONTE_PAINEL}px "Press Start 2P", monospace`;
   g.fillStyle = '#F5D0FE';
-  g.fillText('BOLA', bolaX, bolaY - 4);
+  g.fillText(`BOLA ${estado.bolaAtual}/${estado.bolasPorPartida}`, 268, 44);
   g.fillStyle = '#FFD166';
-  g.fillText(`${estado.bolaAtual}/${estado.bolasPorPartida}`, bolaX, bolaY + 8);
+  g.fillText(`BÔNUS x${estado.multiplicador}`, 268, 70);
 
   const totalBolas = Math.max(estado.bolasPorPartida, estado.bolasRestantes);
   for (let i = 0; i < totalBolas; i++) {
-    const bx = bolaX - (totalBolas - 1) * 6 + i * 12;
-    const by = bolaY + 30;
+    const bx = 272 + i * 16;
+    const by = 86;
     const viva = i < estado.bolasRestantes;
     g.fillStyle = viva ? '#22D3EE' : 'rgba(120, 86, 170, 0.25)';
     g.beginPath();
-    g.arc(bx, by, 4, 0, Math.PI * 2);
+    g.arc(bx, by, 5, 0, Math.PI * 2);
     g.fill();
   }
 
-  g.restore();
+  // Lâmpadas do painel
+  g.textAlign = 'center';
+  g.textBaseline = 'top';
+  for (const luz of tabela.luzes) {
+    const acesa = estado.luzes[luz.id] === true;
+    const cor = acesa ? '#FFD166' : 'rgba(120, 86, 170, 0.28)';
+
+    // Ícone bem visível (lâmpada com moldura)
+    g.fillStyle = acesa ? 'rgba(255, 209, 102, 0.22)' : 'rgba(40, 12, 70, 0.85)';
+    g.beginPath();
+    g.arc(luz.x, luz.y, 9, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = cor;
+    g.lineWidth = 2;
+    g.stroke();
+    g.fillStyle = cor;
+    g.beginPath();
+    g.arc(luz.x, luz.y, 5, 0, Math.PI * 2);
+    g.fill();
+
+    if (acesa) {
+      g.globalAlpha = 0.25 + Math.sin(tempo * 8) * 0.15;
+      g.beginPath();
+      g.arc(luz.x, luz.y, 14, 0, Math.PI * 2);
+      g.fill();
+      g.globalAlpha = 1;
+    }
+
+    g.font = `${FONTE_PAINEL}px "Press Start 2P", monospace`;
+    g.fillStyle = acesa ? '#FFE9A8' : 'rgba(200, 180, 220, 0.6)';
+    g.fillText(luz.rotulo, luz.x, luz.y + 12);
+  }
 }

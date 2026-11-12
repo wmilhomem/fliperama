@@ -4,27 +4,30 @@
  */
 
 /**
- * Flippers (cápsulas rotativas) do pinball.
+ * Flippers (cápsulas rotativas cônicas) do pinball.
  *
- * Cada flipper é uma cápsula que gira em torno de um pivô. A bola recebe a
- * velocidade do ponto de contato: acertar perto da ponta lança muito mais
- * forte do que acertar perto do pivô.
+ * Cada flipper é uma cápsula que gira em torno de um pivô, com espessura
+ * maior na base e menor na ponta. A bola recebe a velocidade do ponto de
+ * contato: acertar perto da ponta lança muito mais forte do que acertar
+ * perto do pivô.
  */
 
 import {
+  ATRITO_CAPTURA,
   IMPULSO_FLIPPER,
   RESTITUICAO_FLIPPER,
   VELOCIDADE_ANGULAR_DESCIDA,
   VELOCIDADE_ANGULAR_FLIPPER,
-} from './constantes';
-import { Bola, pontoMaisProximo } from './fisica';
+  VELOCIDADE_CAPTURA,
+} from './tuning';
+import { Bola, pontoMaisProximoComParametro } from './fisica';
 import { DefinicaoFlipper, Ponto } from './tipos';
 
 export interface Flipper {
   definicao: DefinicaoFlipper;
   /** Ângulo atual em radianos. */
   angulo: number;
-  /** Velocidade angular atual (rad/s),signed. */
+  /** Velocidade angular atual (rad/s), com sinal. */
   velocidadeAngular: number;
   pressionado: boolean;
   /** Animação de impacto (0..1). */
@@ -75,17 +78,26 @@ export function eixoFlipper(flipper: Flipper): { a: Ponto; b: Ponto } {
   };
 }
 
+/** Espessura do flipper no ponto paramétrico `t` (0 = base, 1 = ponta). */
+export function espessuraFlipper(flipper: Flipper, t: number): number {
+  const base = flipper.definicao.raio;
+  const ponta = flipper.definicao.raioPonta ?? base;
+  return base + (ponta - base) * Math.max(0, Math.min(1, t));
+}
+
 /**
  * Colisão da bola com o flipper.
  * Devolve `true` quando houve contato.
  */
 export function colidirFlipper(bola: Bola, flipper: Flipper): boolean {
   const { a, b } = eixoFlipper(flipper);
-  const contato = pontoMaisProximo(bola, a, b);
+  const { ponto: contato, t } = pontoMaisProximoComParametro(bola, a, b);
+  const raioLocal = espessuraFlipper(flipper, t);
+
   const dx = bola.x - contato.x;
   const dy = bola.y - contato.y;
   const distancia = Math.hypot(dx, dy);
-  const raioTotal = bola.raio + flipper.definicao.raio;
+  const raioTotal = bola.raio + raioLocal;
 
   if (distancia > raioTotal) return false;
 
@@ -105,20 +117,34 @@ export function colidirFlipper(bola: Bola, flipper: Flipper): boolean {
   const velocidadeSuperficieX = -flipper.velocidadeAngular * bracoY;
   const velocidadeSuperficieY = flipper.velocidadeAngular * bracoX;
 
-  const relX = bola.vx - velocidadeSuperficieX;
-  const relY = bola.vy - velocidadeSuperficieY;
-  const vn = relX * nx + relY * ny;
+  const parado = Math.abs(flipper.velocidadeAngular) < 0.8;
+  const velocidadeBola = Math.hypot(bola.vx, bola.vy);
 
-  if (vn < 0) {
-    const impulso = -(1 + RESTITUICAO_FLIPPER) * vn;
-    bola.vx += nx * impulso;
-    bola.vy += ny * impulso;
+  if (parado && velocidadeBola < VELOCIDADE_CAPTURA) {
+    // Catch & release: a bola fica "segurada" no flipper erguido.
+    bola.vx = 0;
+    bola.vy = 0;
+  } else {
+    const relX = bola.vx - velocidadeSuperficieX;
+    const relY = bola.vy - velocidadeSuperficieY;
+    const vn = relX * nx + relY * ny;
+
+    if (vn < 0) {
+      const impulso = -(1 + RESTITUICAO_FLIPPER) * vn;
+      bola.vx += nx * impulso;
+      bola.vy += ny * impulso;
+    }
+
+    // Transfere o momento do flipper para a bola: o braço de alavanca
+    // faz a ponta lançar muito mais forte que a base.
+    bola.vx += velocidadeSuperficieX * IMPULSO_FLIPPER;
+    bola.vy += velocidadeSuperficieY * IMPULSO_FLIPPER;
+
+    if (parado) {
+      bola.vx *= 1 - ATRITO_CAPTURA;
+      bola.vy *= 1 - ATRITO_CAPTURA;
+    }
   }
-
-  // Transfere o momento do flipper para a bola: o braço de alavanca
-  // faz a ponta lançar muito mais forte que a base.
-  bola.vx += velocidadeSuperficieX * IMPULSO_FLIPPER;
-  bola.vy += velocidadeSuperficieY * IMPULSO_FLIPPER;
 
   // Saída da penetração
   const penetracao = Math.max(0, raioTotal - distancia);
@@ -129,7 +155,7 @@ export function colidirFlipper(bola: Bola, flipper: Flipper): boolean {
   return true;
 }
 
-/** Desenha o flipper com visual de borracha grossa estilo 70. */
+/** Desenha o flipper cônico (base larga, ponta fina) estilo fliperama dos anos 70. */
 export function desenharFlipper(
   g: CanvasRenderingContext2D,
   flipper: Flipper,
@@ -137,44 +163,63 @@ export function desenharFlipper(
   corBorda: string
 ): void {
   const { a, b } = eixoFlipper(flipper);
-  const largura = flipper.definicao.raio * 2;
+  const raioBase = flipper.definicao.raio;
+  const raioPonta = flipper.definicao.raioPonta ?? raioBase;
   const pulso = flipper.animacao;
 
-  g.save();
-  g.lineCap = 'round';
-  g.strokeStyle = corBorda;
-  g.lineWidth = largura + 3;
-  g.beginPath();
-  g.moveTo(a.x, a.y);
-  g.lineTo(b.x, b.y);
-  g.stroke();
+  // Normal perpendicular ao eixo do flipper
+  const nx = -Math.sin(flipper.angulo);
+  const ny = Math.cos(flipper.angulo);
 
-  g.strokeStyle = corBase;
-  g.lineWidth = largura;
+  const caminho = (folga: number) => {
+    g.beginPath();
+    g.moveTo(a.x + nx * (raioBase + folga), a.y + ny * (raioBase + folga));
+    g.lineTo(b.x + nx * (raioPonta + folga), b.y + ny * (raioPonta + folga));
+    g.arc(b.x, b.y, raioPonta + folga, flipper.angulo + Math.PI / 2, flipper.angulo - Math.PI / 2, true);
+    g.lineTo(a.x - nx * (raioBase + folga), a.y - ny * (raioBase + folga));
+    g.arc(a.x, a.y, raioBase + folga, flipper.angulo - Math.PI / 2, flipper.angulo + Math.PI / 2, true);
+    g.closePath();
+  };
+
+  g.save();
+  // Contorno grosso e escuro
+  g.fillStyle = corBorda;
+  caminho(3);
+  g.fill();
+
+  // Corpo do flipper
+  g.fillStyle = corBase;
+  caminho(0);
+  g.fill();
+
+  // Reflexo superior
+  g.globalAlpha = 0.45;
+  g.fillStyle = '#FFFFFF';
   g.beginPath();
-  g.moveTo(a.x, a.y);
-  g.lineTo(b.x, b.y);
+  g.moveTo(a.x + nx * raioBase * 0.45, a.y + ny * raioBase * 0.45);
+  g.lineTo(b.x + nx * raioPonta * 0.45, b.y + ny * raioPonta * 0.45);
+  g.lineWidth = 2;
+  g.strokeStyle = '#FFFFFF';
   g.stroke();
+  g.globalAlpha = 1;
 
   if (pulso > 0) {
     g.globalAlpha = pulso * 0.6;
     g.strokeStyle = '#FFFFFF';
-    g.lineWidth = Math.max(1, largura * 0.35);
-    g.beginPath();
-    g.moveTo(a.x, a.y);
-    g.lineTo(b.x, b.y);
+    g.lineWidth = 3;
+    caminho(4);
     g.stroke();
+    g.globalAlpha = 1;
   }
 
   // Pino do pivô
-  g.globalAlpha = 1;
   g.fillStyle = corBorda;
   g.beginPath();
-  g.arc(a.x, a.y, flipper.definicao.raio * 0.9, 0, Math.PI * 2);
+  g.arc(a.x, a.y, raioBase * 0.62, 0, Math.PI * 2);
   g.fill();
-  g.fillStyle = corBase;
+  g.fillStyle = '#FFE9A8';
   g.beginPath();
-  g.arc(a.x, a.y, flipper.definicao.raio * 0.6, 0, Math.PI * 2);
+  g.arc(a.x, a.y, raioBase * 0.3, 0, Math.PI * 2);
   g.fill();
   g.restore();
 }
