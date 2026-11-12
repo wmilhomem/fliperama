@@ -194,7 +194,7 @@ export function desenharCasa(
     desenharRede(g, x + 6, y + 20);
   }
   if (casasConcluidas >= 2) {
-    desenharBandeira(g, x + CASA_LARGURA / 2, y + 18, tempo);
+    desenharBandeira(g, x + 20, y + 18, tempo);
   }
   if (casasConcluidas >= 3) {
     desenharCanoa(g, x - 60, y + 76);
@@ -231,7 +231,7 @@ export function desenharIndicadorEntrada(
   const x = CASA_PORTA_X;
   const y = CASA_Y + 18;
 
-  g.fillStyle = CORES.amarelo;
+  g.fillStyle = CORES.rosa;
   g.fillRect(x - 2, y, 4, 10);
   g.fillRect(x - 4, y + 10, 8, 3);
   g.fillRect(x - 6, y + 13, 12, 3);
