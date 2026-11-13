@@ -68,7 +68,13 @@ export type AudioPreset =
   | 'drenar'
   | 'tilt'
   | 'bolaExtra'
-  | 'especial';
+  | 'especial'
+  | 'torpedo'
+  | 'mergulhador'
+  | 'entrega'
+  | 'alarme'
+  | 'superficie'
+  | 'patrulha';
 
 export interface AudioService {
   tocar(preset: AudioPreset): void;

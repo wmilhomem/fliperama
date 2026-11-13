@@ -20,6 +20,7 @@ import mina from './mina.png';
 import gafieira from './gafieira.png';
 import astro from './astro.png';
 import modelo from './modelo.png';
+import abissal from './abissal.png';
 
 export const PREVIAS_JOGOS: Record<string, string> = {
   hannah,
@@ -34,6 +35,7 @@ export const PREVIAS_JOGOS: Record<string, string> = {
   gafieira,
   astro,
   modelo,
+  abissal,
 };
 
 /** Devolve a miniatura de um jogo (undefined se ainda não existir). */

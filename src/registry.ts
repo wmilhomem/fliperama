@@ -17,6 +17,7 @@ import { cheiaGameModule } from './games/cheia';
 import { minaGameModule } from './games/mina';
 import { gafieiraGameModule } from './games/gafieira';
 import { astroGameModule } from './games/astro';
+import { abissalGameModule } from './games/abissal';
 
 /**
  * REGISTRO CENTRAL DE JOGOS DO FLIPERAMA
@@ -38,6 +39,7 @@ export const JOGOS: GameModule[] = [
   minaGameModule,
   gafieiraGameModule,
   astroGameModule,
+  abissalGameModule,
   modeloGameModule,
 ];
 
@@ -51,13 +53,6 @@ export const JOGOS_EM_BREVE: UpcomingGame[] = [
     genero: 'Shoot \'em up Espacial',
     descricao: 'Defenda a base orbital disparando contra enxames alienígenas em formação com escudos de plasma.',
     corTema: '#8B5CF6',
-  },
-  {
-    id: 'submarino_abissal',
-    titulo: 'Submarino Abissal',
-    genero: 'Aventura Subaquática',
-    descricao: 'Pilote um batiscafo explorando fossas oceânicas, resgatando mergulhadores e desviando de minas magnéticas.',
-    corTema: '#06B6D4',
   },
   {
     id: 'pista_veloz',
