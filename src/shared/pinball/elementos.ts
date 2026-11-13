@@ -434,6 +434,25 @@ export function posicaoNaMola(elemento: Plunger): { x: number; y: number } {
   return { x: elemento.x, y: elemento.y };
 }
 
+/** @deprecated Use `import { BumperPop } from './tipos'` instead. */
+export { BumperPop } from './tipos';
+
+/** @deprecated Use `import { Alvo } from './tipos'` instead. */
+export { Alvo } from './tipos';
+
+/** @deprecated Use `import { Spinner } from './tipos'` instead. */
+export { Spinner } from './tipos';
+
+/** @deprecated Use `import { Slingshot } from './tipos'` instead. */
+export { Slingshot } from './tipos';
+
+function bolaSobreRetangulo(
+
+/** Tipo de elemento bumper de pop. */
+export type { BumperPop } from './tipos';
+/** Tipo de elemento alvo. */
+export type { Alvo } from './tipos';
+
 function bolaSobreRetangulo(
   bola: Bola,
   x: number,

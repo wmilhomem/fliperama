@@ -14,4 +14,6 @@ export const RAIO_BOLA = 10; // px
 export const LARGURA_CAMPO = 480;
 export const ALTURA_CAMPO = 560;
 export const ALTURA_PAINEL = 96;
+export const LARGURA = LARGURA_CAMPO;
+export const ALTURA = ALTURA_CAMPO;
 export const MARGEM_COSTAS = 24;

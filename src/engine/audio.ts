@@ -5,6 +5,15 @@
 
 import { AudioPreset, AudioService } from './types';
 
+/** Função conveniente para tocar sons pelo nome. */
+export function tocarSom(preset: AudioPreset): void {
+  const engine = new RetroAudioEngine();
+  engine.tocar(preset);
+}
+
+/** Instância do motor de áudio disponível para jogos. */
+export const audioPlayer = new RetroAudioEngine();
+
 /**
  * Sintetizador de áudio retrô compartilhado via Web Audio API.
  * Gera todos os efeitos sonoros proceduralmente sem depender de arquivos externos.

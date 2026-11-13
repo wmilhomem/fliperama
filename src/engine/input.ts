@@ -4,6 +4,7 @@
  */
 
 import { InputState } from './types';
+export type { InputState };
 
 export class UnifiedInputManager {
   private teclasPressionadas: Set<string> = new Set();
