@@ -18,6 +18,7 @@ import { minaGameModule } from './games/mina';
 import { gafieiraGameModule } from './games/gafieira';
 import { astroGameModule } from './games/astro';
 import { abissalGameModule } from './games/abissal';
+import { invasores84GameModule } from './games/invasores84';
 
 /**
  * REGISTRO CENTRAL DE JOGOS DO FLIPERAMA
@@ -26,7 +27,7 @@ import { abissalGameModule } from './games/abissal';
  * 1. Crie a pasta em `/src/games/seu_jogo/index.ts` implementando o contrato `GameModule`.
  * 2. Adicione o módulo no array `JOGOS` abaixo.
  * Pronto! O jogo herda automaticamente o visual, os controles, os sons, o recorde e a tela de pausa.
- */
+*/
 export const JOGOS: GameModule[] = [
   hannahGameModule,
   tatuGameModule,
@@ -40,6 +41,7 @@ export const JOGOS: GameModule[] = [
   gafieiraGameModule,
   astroGameModule,
   abissalGameModule,
+  invasores84GameModule,
   modeloGameModule,
 ];
 
