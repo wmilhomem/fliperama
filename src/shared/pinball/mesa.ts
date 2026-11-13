@@ -38,12 +38,12 @@ export function iniciarJogo(): EstadoJogo {
   };
 }
 
-/** Atualiza a física da bola. */
+/** Atualiza a f��sica da bola. */
 export function atualizarFisica(bola: Bola, dt: number, flippers: Flipper[]): Bola {
   // Aplica gravidade
   bola.vy += GRAVIDADE * TAXA_ATUALIZACAO;
 
-  // Limita velocidade máxima
+  // Limita velocidade m��xima
   const velocidadeAtual = Math.hypot(bola.vx, bola.vy);
   if (velocidadeAtual > VELOCIDADE_MAXIMA) {
     const fator = VELOCIDADE_MAXIMA / velocidadeAtual;
@@ -51,7 +51,7 @@ export function atualizarFisica(bola: Bola, dt: number, flippers: Flipper[]): Bo
     bola.vy *= fator;
   }
 
-  // Atualiza posição
+  // Atualiza posi��ǜo
   bola.x += bola.vx * TAXA_ATUALIZACAO;
   bola.y += bola.vy * TAXA_ATUALIZACAO;
 
@@ -68,7 +68,7 @@ export function atualizarFisica(bola: Bola, dt: number, flippers: Flipper[]): Bo
   // Colisão com flippers
   flippers.forEach(flipper => {
     if (colidirFlipper(bola, flipper)) {
-      // Inverte a velocidade Y e adiciona força do flipper
+      // Inverte a velocidade Y e adiciona for��a do flipper
       bola.vy = -Math.abs(bola.vy) * 0.9;
       bola.vx += flipper.velocidade * 0.1;
     }
@@ -91,4 +91,16 @@ function reiniciarBola(bola: Bola): Bola {
   bola.vy = 0;
   bola.naMola = true;
   return bola;
+}
+
+/** Cria uma instância de jogo de pinball. */
+export function criarJogoPinball(ctx: any, tabela: any, options: { mensagem: string; debug?: boolean }): any {
+  return {
+    ctx,
+    tabela,
+    options,
+    atualizar: () => {},
+    desenhar: () => {},
+    destruir: () => {},
+  };
 }

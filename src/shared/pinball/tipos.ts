@@ -23,11 +23,12 @@ export type TipoCasa = 'livre' | 'bomba' | 'estrela';
 
 export interface Estrela {
   x: number;
-  y:: number;
+  y: number;
 }
 
 /* ------------------------------------------------------------------ */
 /* CANOES */
+
 /* ------------------------------------------------------------------ */
 
 export interface Celeste {
@@ -51,6 +52,7 @@ export type TipoElemento = 'bumper' | 'slingshot' | 'alvo' | 'trilho' | 'pinball
 
 /* ------------------------------------------------------------------ */
 /* Ponto e coordenadas. */
+
 /* ------------------------------------------------------------------ */
 
 export interface Ponto {
@@ -61,7 +63,7 @@ export interface Ponto {
 /** Centro do personagem. */
 export interface Centro {
   x: number;
-  y:obra.metade;
+  y: number;
 }
 
 /** Centro do projetil. */
@@ -80,13 +82,6 @@ export interface ancoragem {
 export interface projecil {
   x: number;
   y: number;
-}
-
-/** Centro do projetil. */
-export interface projecil {
-  x: number;
-  y: number;
-  /** Raio do projétil. */
   raio: number;
 }
 
@@ -127,25 +122,4 @@ export interface Cano {
   x: number;
   y: number;
   comprimento: number;
-}
-
-/** Centro do projetil. */
-export interface projecil {
-  x: number;
-  y:number;
-  raio: number;
-}
-
-/** Centro do projetil. */
-export interface projecil {
-  x: number;
-  y: number;
-  raio: number;
-}
-
-/** Centro do projetil. */
-export interface projecil {
-  x: number;
-  y: number;
-  raio: number;
 }
