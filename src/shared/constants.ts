@@ -18,9 +18,19 @@ export const STORAGE_KEYS = {
   CONFIG: 'fliperama_config_v1',
   RECORDS: 'fliperama_records_v1',
   SCORES_HISTORY: 'fliperama_history_v1',
+  PLAYER: 'fliperama_player_v1',
   LEGACY_HANNAH: 'salve_a_hannah_highscore',
   LEGACY_LIA: 'salve_a_lia_highscore',
 } as const;
+
+/** Avatares (emojis) oferecidos na primeira visita. */
+export const AVATARES: string[] = [
+  '👾', '🕹️', '🤖', '👽', '🦖', '🐉',
+  '🦊', '🐯', '🐼', '🐸', '👻', '🐙',
+];
+
+export const AVATAR_PADRAO = '👾';
+export const NOME_PADRAO = 'JOGADOR';
 
 export const RETRO_PALETTE = {
   bgBlack: '#030712',

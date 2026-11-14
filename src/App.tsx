@@ -12,10 +12,13 @@ import { PlatformConfig, PlatformView } from './shared/types';
 import { CatalogView } from './hub/CatalogView';
 import { HelpModal } from './hub/HelpModal';
 import { HubHeader } from './hub/HubHeader';
+import { PlayerModal } from './hub/PlayerModal';
 import { RankingView } from './hub/RankingView';
 import { SettingsView } from './hub/SettingsView';
+import { lerJogador } from './shared/player';
 
 export default function App() {
+  const [jogador, setJogador] = useState(() => lerJogador());
   const [visao, setVisao] = useState<PlatformView>('hub');
   const [jogoAtivoId, setJogoAtivoId] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState<boolean>(false);
@@ -131,6 +134,9 @@ export default function App() {
           onFechar={() => setShowHelp(false)}
         />
       )}
+
+      {/* ONBOARDING DO JOGADOR (só na primeira visita) */}
+      {!jogador && <PlayerModal onSalvar={setJogador} />}
     </div>
   );
 }

@@ -116,7 +116,7 @@ export class RetroStorageService implements StorageService {
     return copia;
   }
 
-  salvarPontuacaoHistorico(jogoId: string, pontuacao: number, nome = 'JOGADOR'): void {
+  salvarPontuacaoHistorico(jogoId: string, pontuacao: number, nome = 'JOGADOR', avatar?: string): void {
     if (typeof window === 'undefined') return;
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.SCORES_HISTORY);
@@ -126,6 +126,7 @@ export class RetroStorageService implements StorageService {
         jogoId,
         pontuacao: Math.floor(pontuacao),
         nome,
+        ...(avatar ? { avatar } : {}),
         data: new Date().toLocaleDateString('pt-BR', {
           day: '2-digit',
           month: '2-digit',

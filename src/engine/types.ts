@@ -93,7 +93,7 @@ export interface StorageService {
   salvarRecorde(jogoId: string, pontuacao: number): boolean;
   lerRecorde(jogoId: string): number;
   listarRanking(): Record<string, number>;
-  salvarPontuacaoHistorico(jogoId: string, pontuacao: number, nome?: string): void;
+  salvarPontuacaoHistorico(jogoId: string, pontuacao: number, nome?: string, avatar?: string): void;
   limparDados(): void;
 }
 

@@ -4,9 +4,10 @@
  */
 
 import React, { useState } from 'react';
-import { Settings, Volume2, Smartphone, Trash2, ArrowLeft, Check, AlertTriangle } from 'lucide-react';
+import { Settings, Volume2, Smartphone, Trash2, ArrowLeft, Check, AlertTriangle, UserRound } from 'lucide-react';
 import { PlatformConfig } from '../shared/types';
 import { RetroStorageService } from '../engine/storage';
+import { lerJogador, limparJogador } from '../shared/player';
 
 interface SettingsViewProps {
   config: PlatformConfig;
@@ -21,6 +22,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 }) => {
   const [salvoFeedback, setSalvoFeedback] = useState(false);
   const [mostrarConfirmacaoLimpar, setMostrarConfirmacaoLimpar] = useState(false);
+  const jogador = lerJogador();
+
+  const handleTrocarJogador = () => {
+    limparJogador();
+    window.location.reload();
+  };
 
   const atualizar = <K extends keyof PlatformConfig>(chave: K, valor: PlatformConfig[K]) => {
     const nova = { ...config, [chave]: valor };
@@ -66,8 +73,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* PAINEL DE OPÇÕES */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl divide-y divide-slate-800">
-        {/* ÁUDIO E VOLUME */}
+        {/* JOGADOR ATUAL */}
         <div className="py-4 first:pt-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-xl">
+                {jogador?.avatar ?? '👾'}
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-white">JOGADOR ATUAL</h3>
+                <p className="text-[9px] text-slate-400">{jogador?.nome ?? 'Sem nome'} — assina suas pontuações no ranking</p>
+              </div>
+            </div>
+            <button
+              onClick={handleTrocarJogador}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-800 transition-colors"
+            >
+              <UserRound className="w-3.5 h-3.5" />
+              TROCAR JOGADOR
+            </button>
+          </div>
+        </div>
+
+        {/* ÁUDIO E VOLUME */}
+        <div className="py-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5">
               <Volume2 className="w-5 h-5 text-emerald-400" />

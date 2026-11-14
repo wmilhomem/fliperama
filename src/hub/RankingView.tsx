@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { Trophy, Medal, Star, RotateCcw, ArrowLeft, Gamepad2 } from 'lucide-react';
 import { GameModule } from '../engine/types';
 import { RetroStorageService } from '../engine/storage';
-import { STORAGE_KEYS } from '../shared/constants';
+import { AVATAR_PADRAO, STORAGE_KEYS } from '../shared/constants';
 
 interface RankingViewProps {
   jogos: GameModule[];
@@ -20,6 +20,7 @@ interface ScoreHistoryItem {
   jogoId: string;
   pontuacao: number;
   nome: string;
+  avatar?: string;
   data: string;
 }
 
@@ -146,7 +147,10 @@ export const RankingView: React.FC<RankingViewProps> = ({
                       <td className="py-2.5 font-bold text-white">
                         {jogo?.titulo || item.jogoId}
                       </td>
-                      <td className="py-2.5 text-slate-300">{item.nome}</td>
+                      <td className="py-2.5 text-slate-300">
+                        <span className="mr-1.5">{item.avatar ?? AVATAR_PADRAO}</span>
+                        {item.nome}
+                      </td>
                       <td className="py-2.5 text-right font-bold text-yellow-400 tabular-nums">
                         {Math.floor(item.pontuacao)}
                       </td>

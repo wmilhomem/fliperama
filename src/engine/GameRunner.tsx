@@ -27,6 +27,7 @@ import { RetroGameLoop } from './loop';
 import { collision } from './collision';
 import { sprites } from './sprites';
 import { PlatformConfig } from '../shared/types';
+import { lerJogador } from '../shared/player';
 
 interface GameRunnerProps {
   modulo: GameModule;
@@ -123,8 +124,14 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
           audioRef.current.tocar('vitoria');
         }
         const pontuacaoFinal = hudRef.current.obterEstado().pontuacao;
+        const perfil = lerJogador();
         storageRef.current.salvarRecorde(modulo.id, pontuacaoFinal);
-        storageRef.current.salvarPontuacaoHistorico(modulo.id, pontuacaoFinal);
+        storageRef.current.salvarPontuacaoHistorico(
+          modulo.id,
+          pontuacaoFinal,
+          perfil?.nome ?? 'JOGADOR',
+          perfil?.avatar
+        );
       },
       solicitarPausa: () => {
         alternarPausa();

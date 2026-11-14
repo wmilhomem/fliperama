@@ -17,4 +17,10 @@ export interface GameScoreRecord {
   pontuacao: number;
   data: string; // ISO string ou formatada
   nome: string;
+  avatar?: string; // Emoji do jogador (opcional; registros antigos não têm)
+}
+
+export interface PlayerProfile {
+  nome: string;
+  avatar: string; // Emoji escolhido na primeira visita
 }
