@@ -31,7 +31,7 @@ import { asaGameModule } from './games/asa';
 export const JOGOS: GameModule[] = [
   hannahGameModule,
   tatuGameModule,
-  garimpoGameModule,
+  invasores84GameModule,
   hidroGameModule,
   selvaGameModule,
   raliGameModule,
@@ -41,7 +41,7 @@ export const JOGOS: GameModule[] = [
   gafieiraGameModule,
   astroGameModule,
   abissalGameModule,
-  invasores84GameModule,
+  garimpoGameModule,
   asaGameModule,
   modeloGameModule,
 ];
