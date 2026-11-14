@@ -52,13 +52,6 @@ export const JOGOS: GameModule[] = [
  */
 export const JOGOS_EM_BREVE: UpcomingGame[] = [
   {
-    id: 'nave_cosmica',
-    titulo: 'Invasores Cósmicos 84',
-    genero: 'Shoot \'em up Espacial',
-    descricao: 'Defenda a base orbital disparando contra enxames alienígenas em formação com escudos de plasma.',
-    corTema: '#8B5CF6',
-  },
-  {
     id: 'pista_veloz',
     titulo: 'Pista Veloz Turbo',
     genero: 'Corrida Retrô',

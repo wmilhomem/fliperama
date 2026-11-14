@@ -22,6 +22,7 @@ import astro from './astro.png';
 import modelo from './modelo.png';
 import abissal from './abissal.png';
 import asa from './asa.png';
+import invasores84 from './invasores84.png';
 
 export const PREVIAS_JOGOS: Record<string, string> = {
   hannah,
@@ -38,6 +39,7 @@ export const PREVIAS_JOGOS: Record<string, string> = {
   modelo,
   abissal,
   asa,
+  invasores84,
 };
 
 /** Devolve a miniatura de um jogo (undefined se ainda não existir). */
