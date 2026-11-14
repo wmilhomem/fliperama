@@ -172,6 +172,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
         }
 
         // Atualizar lógica do jogo
+        hudRef.current.atualizarTextosFlutuantes(dt);
         jogo.atualizar(dt, inputState);
       },
       renderizar: () => {
