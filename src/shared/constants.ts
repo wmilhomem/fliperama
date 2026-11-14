@@ -11,7 +11,7 @@ export const PLATFORM_TAGLINE = 'Plataforma de Jogos Arcade Retrô';
 export const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
   volume: 0.7,
   somAtivo: true,
-  efeitoCRT: true,
+  efeitoCRT: false,
   controlesTouch: 'auto',
 };
 
