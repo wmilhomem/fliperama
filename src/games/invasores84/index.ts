@@ -113,7 +113,7 @@ const PONTOS_INVASOR = [10, 20, 30];
 export const invasores84GameModule: GameModule = {
   id: 'invasores84',
   titulo: 'Invasores Cósmicos 84',
-  genero: 'Shoot \'em up Espacial',
+  genero: 'Tiro Espacial',
   descricao: 'Defenda a base orbital disparando contra os enxames alienígenas em formação.',
   corTema: '#22C55E',
   largura: LARGURA,
