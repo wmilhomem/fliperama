@@ -118,10 +118,14 @@ export function colidirFlipper(bola: Bola, flipper: Flipper): boolean {
   const velocidadeSuperficieY = flipper.velocidadeAngular * bracoX;
 
   const parado = Math.abs(flipper.velocidadeAngular) < 0.8;
+  // "Catch & release" só vale com o flipper levantado e parado: em repouso a
+  // bola precisa continuar rolando (senão estaciona na base do flipper sem
+  // saída). Um flipper levantado cede baixíssima alavancagem perto do pivô.
+  const erguido = flipper.angulo < flipper.definicao.anguloRepouso - 0.06;
   const velocidadeBola = Math.hypot(bola.vx, bola.vy);
 
-  if (parado && velocidadeBola < VELOCIDADE_CAPTURA) {
-    // Catch & release: a bola fica "segurada" no flipper erguido.
+  if (erguido && parado && velocidadeBola < VELOCIDADE_CAPTURA) {
+    // A bola fica "segurada" no flipper erguido.
     bola.vx = 0;
     bola.vy = 0;
   } else {

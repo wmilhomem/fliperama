@@ -182,10 +182,10 @@ export const DRENO_Y = 768;
 /* ------------------------------------------------------------------ */
 
 /** Pivô do flipper esquerdo. */
-export const FLIPPER_PIVO_ESQUERDO_X = 168;
+export const FLIPPER_PIVO_ESQUERDO_X = 174;
 
 /** Pivô do flipper direito. */
-export const FLIPPER_PIVO_DIREITO_X = 368;
+export const FLIPPER_PIVO_DIREITO_X = 362;
 
 /** Altura dos pivôs. */
 export const FLIPPER_PIVO_Y = 720;
@@ -207,7 +207,7 @@ export const FLIPPER_ANGULO_ATIVO = (-28 * Math.PI) / 180;
 
 /**
  * Vão entre as pontas dos flippers em repouso (centro a centro).
- * Valor calculado a partir dos pivôs/comprimento/ângulo (~44 px).
+ * Valor calculado a partir dos pivôs/comprimento/ângulo (~33 px).
  */
 export const VAO_FLIPPERS =
   FLIPPER_PIVO_DIREITO_X -
