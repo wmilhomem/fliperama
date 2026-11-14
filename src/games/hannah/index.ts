@@ -179,7 +179,7 @@ export const hannahGameModule: GameModule = {
   id: 'hannah',
   titulo: 'Salve a Hannah',
   descricao: 'Suba as vigas de aço da construção em obras e resgate Hannah das garras do temível gorila Grotão.',
-  genero: 'Plataforma Arcade',
+  genero: 'Aventura de Resgate',
   corTema: '#EF4444',
   largura: 480,
   altura: 560,
