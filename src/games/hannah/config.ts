@@ -73,7 +73,7 @@ export const MARTELO_AVISO = 2.5;
 export const COYOTE_MS = 100;
 export const BUFFER_PULO_MS = 100;
 
-export const TOLERANCIA_ESCADA = 6;
+export const TOLERANCIA_ESCADA = 10;
 
 export const VELOCIDADE_JOGADOR = 150;
 export const VELOCIDADE_ESCADA = 92;

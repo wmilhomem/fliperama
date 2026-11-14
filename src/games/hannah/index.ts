@@ -37,6 +37,7 @@ import {
 } from './config';
 import {
   construirTela,
+  encontrarVigiaAtravessada,
   validarTela,
 } from './estrutura';
 import { MotorDeCenas } from './cenas';
@@ -530,6 +531,7 @@ export const hannahGameModule: GameModule = {
 
       j.coyoteTimer = Math.max(0, j.coyoteTimer - dt);
       j.bufferPulo = Math.max(0, j.bufferPulo - dt);
+      const pesAntes = j.y + j.altura;
 
       // Prioridade vertical dentro de uma escada
       if (j.onLadder) {
@@ -591,10 +593,11 @@ export const hannahGameModule: GameModule = {
         j.vy += GRAVIDADE * dt;
         j.y += j.vy * dt;
 
-        // Agarrar escada (tolerância de 6 px)
+        // Agarrar escada (tolerância de 10 px)
         if (!j.onLadder) {
+          const pes = j.y + j.altura;
           const escada = estrutura.escadas.find(
-            (e) => !e.quebrada && Math.abs(j.x - e.x) <= TOLERANCIA_ESCADA && j.y >= e.yTop - 4 && j.y <= e.yBottom + 4
+            (e) => !e.quebrada && Math.abs(j.x - e.x) <= TOLERANCIA_ESCADA && pes >= e.yTop - 2 && j.y <= e.yBottom + 4
           );
           if (escada && (input.cima || input.baixo) && !comMartelo) {
             j.onLadder = true;
@@ -605,23 +608,21 @@ export const hannahGameModule: GameModule = {
         }
       }
 
-      // Colisão com as vigas (pouso)
+      // Colisão com as vigas (pouso por varredura — nunca atravessa)
       if (!j.onLadder) {
-        const vigia = encontrarSegmentoDe(j.x, j.y + j.altura);
-        if (vigia) {
-          const superficie = vigia.yEm(j.x);
-          if (j.y + j.altura >= superficie && j.vy >= 0 && j.y + j.altura - superficie < 26) {
-            // Morte por queda se caiu de altura maior que um andar
-            if (j.quedaOrigem > 0 && j.y + j.altura - j.quedaOrigem > ALTURA_QUEDA_MORTE && j.vy > 300) {
-              perderVida();
-              return;
-            }
-            j.y = superficie - j.altura;
-            j.vy = 0;
-            j.onGround = true;
-            j.coyoteTimer = COYOTE_MS / 1000;
-            j.quedaOrigem = j.y + j.altura;
+        const pouso = encontrarVigiaAtravessada(estrutura.girders, pesAntes, j.y + j.altura, j.x);
+        if (pouso) {
+          const superficie = pouso.surfaceY;
+          // Morte por queda se caiu de altura maior que um andar
+          if (j.quedaOrigem > 0 && j.y + j.altura - j.quedaOrigem > ALTURA_QUEDA_MORTE && j.vy > 300) {
+            perderVida();
+            return;
           }
+          j.y = superficie - j.altura;
+          j.vy = 0;
+          j.onGround = true;
+          j.coyoteTimer = COYOTE_MS / 1000;
+          j.quedaOrigem = j.y + j.altura;
         } else {
           if (j.onGround) j.coyoteTimer = COYOTE_MS / 1000;
           j.onGround = false;
@@ -739,15 +740,19 @@ export const hannahGameModule: GameModule = {
           continue;
         }
 
-        // Gravidade / pouso em vigas
-        const vigia = encontrarSegmentoDe(b.x, b.y + b.radius);
+        // Gravidade / pouso em vigas (por varredura — nunca atravessa)
+        const prevBottom = b.y + b.radius;
+        b.vy += GRAVIDADE * dt;
+        b.y += b.vy * dt;
+        const atravessada = encontrarVigiaAtravessada(estrutura.girders, prevBottom, b.y + b.radius, b.x);
+        const vigia = atravessada?.vigia ?? encontrarSegmentoDe(b.x, b.y + b.radius);
         if (vigia) {
           const superficie = vigia.yEm(b.x);
-          if (b.y + b.radius >= superficie && b.vy >= 0) {
-            // Chance de descer por uma escada que cruza aqui
+          if (b.y + b.radius >= superficie - 2) {
+            // Chance de descer pela escada (topo da escada encosta nesta viga)
             let desceu = false;
             for (const escada of estrutura.escadas) {
-              if (escada.yTop < b.y + 4 && escada.yBottom > b.y + b.radius) {
+              if (Math.abs(b.x - escada.x) < 8 && Math.abs(b.y + b.radius - escada.yTop) < 10) {
                 const chance = escada.quebrada ? CHANCE_ESCADA_QUEBRADA : CHANCE_ESCADA_INTEIRA;
                 if (Math.random() < chance) {
                   b.descendoEscada = true;
@@ -769,13 +774,7 @@ export const hannahGameModule: GameModule = {
               b.vy = 0;
               b.vx = vigia.direcao * desafio().barrilVelocidade;
             }
-          } else {
-            b.vy += GRAVIDADE * dt;
-            b.y += b.vy * dt;
           }
-        } else {
-          b.vy += GRAVIDADE * dt;
-          b.y += b.vy * dt;
         }
 
         // Esteira empurra o barril

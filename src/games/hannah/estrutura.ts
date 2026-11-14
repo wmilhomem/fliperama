@@ -43,6 +43,24 @@ export function construirTela(def: TelaDef): EstruturaTela {
   return { def, girders, escadas };
 }
 
+/** Encontra a viga cuja superfície foi atravessada entre prevBottom e currBottom. */
+export function encontrarVigiaAtravessada(
+  girders: Segmento[],
+  prevBottom: number,
+  currBottom: number,
+  x: number
+): { vigia: Segmento; surfaceY: number } | null {
+  let melhor: { vigia: Segmento; surfaceY: number } | null = null;
+  for (const g of girders) {
+    if (x < g.x - 6 || x > g.x2 + 6) continue;
+    const sup = g.yEm(x);
+    if (prevBottom <= sup + 2 && currBottom >= sup - 2) {
+      if (!melhor || sup < melhor.surfaceY) melhor = { vigia: g, surfaceY: sup };
+    }
+  }
+  return melhor;
+}
+
 /**
  * Valida atravessabilidade e integridade da tela.
  * Devolve a lista de problemas encontrados (vazia = válida).
