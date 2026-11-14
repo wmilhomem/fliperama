@@ -4,158 +4,119 @@
  */
 
 /**
- * GERADOR DE ESTRUTURAS DO SALVE A HANNAH
+ * CARGA E VALIDAÇÃO DE TELAS — SALVE A HANNAH
  *
- * Cada fase recebe uma planta diferente, mas o jogo continua sempre
- * resolvível: 7 vigas com inclinação alternada (Hannah no topo, gorila à
- * esquerda, térreo plano embaixo) e escadas garantindo passagem entre
- * todos os andares (ao menos uma escada inteira por vão). Escadas quebradas
- * aparecem como atalhos que não dão passagem completa — os barris, porém,
- * descem por elas normalmente.
- *
- * A planta é determinística por fase (mesma fase = mesma estrutura).
+ * Resolve a geometria declarada em telas.ts para objetos com altura
+ * calculada, e valida que a tela é atravessável: existe caminho do térreo
+ * até o topo usando apenas escadas inteiras, todos os itens estão ao
+ * alcance e o nascimento de barris não fica sobre o jogador.
  */
 
-export interface Girder {
-  id: number;
-  xStart: number;
-  yStart: number;
-  xEnd: number;
-  yEnd: number;
-  height: number;
-  rollDirection: 1 | -1;
-}
+import {
+  EstruturaTela,
+  Escada,
+  Segmento,
+  TelaDef,
+} from './tipos';
 
-export interface Ladder {
-  x: number;
-  yTop: number;
-  yBottom: number;
-  broken: boolean;
-  brokenGapY?: number;
-}
+export function construirTela(def: TelaDef): EstruturaTela {
+  const girders: Segmento[] = def.girders.map((g) => {
+    const x2 = g.x + g.largura;
+    const y2 = g.y + g.dy;
+    const yEm = (x: number) => g.y + (g.dy * (x - g.x)) / g.largura;
+    return { ...g, x2, y2, altura: g.altura ?? 12, yEm };
+  });
 
-export interface Estrutura {
-  girders: Girder[];
-  ladders: Ladder[];
-}
-
-/** RNG determinístico (mulberry32). */
-function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return function () {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
-const jitter = (rnd: () => number, amp: number) => (rnd() - 0.5) * 2 * amp;
-
-function girderYAt(g: Girder, x: number): number | null {
-  const minX = Math.min(g.xStart, g.xEnd);
-  const maxX = Math.max(g.xStart, g.xEnd);
-  if (x < minX || x > maxX) return null;
-  const ratio = (x - g.xStart) / (g.xEnd - g.xStart);
-  return g.yStart + (g.yEnd - g.yStart) * ratio;
-}
-
-/** Intervalo horizontal comum a duas vigas (onde cabem escadas). */
-function overlapSpan(a: Girder, b: Girder): [number, number] {
-  const lo = Math.max(Math.min(a.xStart, a.xEnd), Math.min(b.xStart, b.xEnd));
-  const hi = Math.min(Math.max(a.xStart, a.xEnd), Math.max(b.xStart, b.xEnd));
-  return [lo, hi];
-}
-
-export function gerarEstrutura(fase: number): Estrutura {
-  const rnd = mulberry32(((fase * 2654435761) >>> 0) ^ 0x9e3779b9);
-
-  // ---- Vigas (sempre 7, inclinação alternada; térreo plano) ----
-  const mkt = (
-    id: number,
-    xStart: number,
-    yStart: number,
-    xEnd: number,
-    yEnd: number,
-    dir: 1 | -1,
-    height = 12
-  ): Girder => {
-    const jx1 = jitter(rnd, 22);
-    const jx2 = jitter(rnd, 22);
-    const jy = jitter(rnd, 8);
-    const a = clamp(yStart + jy, 46, 505);
-    const b = clamp(yEnd + jy + jitter(rnd, 5), 46, 505);
+  const escadas: Escada[] = def.escadas.map((e) => {
+    const [a, b] = e.entre;
+    const yA = girders[a].yEm(e.x);
+    const yB = girders[b].yEm(e.x);
     return {
-      id,
-      xStart: clamp(xStart + jx1, 8, 200),
-      yStart: a,
-      xEnd: clamp(xEnd + jx2, 280, 472),
-      yEnd: id === 0 || id === 1 ? a : b, // plataformas do topo planas
-      height,
-      rollDirection: dir,
+      x: e.x,
+      yTop: Math.min(yA, yB),
+      yBottom: Math.max(yA, yB),
+      quebrada: !!e.quebrada,
+      entre: [a, b],
     };
-  };
+  });
 
-  const girders: Girder[] = [
-    mkt(0, 180, 75, 300, 75, 1), // Hannah (centro, topo)
-    mkt(1, 25, 125, 175, 125, 1), // Grotão (esquerda, topo)
-    mkt(2, 65, 175, 445, 152, -1),
-    mkt(3, 35, 245, 415, 265, 1),
-    mkt(4, 65, 355, 445, 332, -1),
-    mkt(5, 35, 425, 415, 442, 1),
-    { id: 6, xStart: 15, yStart: 520, xEnd: 465, yEnd: 520, height: 14, rollDirection: -1 },
-  ];
+  return { def, girders, escadas };
+}
 
-  // ---- Escadas ----
-  const ladders: Ladder[] = [];
-  // [id de cima, id de baixo, quantidade, máx. quebradas]
-  const gaps: [number, number, number, number][] = [
-    [0, 2, 1, 0],
-    [2, 3, 2, 1],
-    [3, 4, 2, 1],
-    [4, 5, 2, 1],
-    [5, 6, 3, 1],
-  ];
+/**
+ * Valida atravessabilidade e integridade da tela.
+ * Devolve a lista de problemas encontrados (vazia = válida).
+ */
+export function validarTela(est: EstruturaTela): string[] {
+  const problemas: string[] = [];
+  const { girders, escadas, def } = est;
+  const n = girders.length;
+  if (n < 2) {
+    problemas.push('tela precisa de ao menos 2 vigas');
+    return problemas;
+  }
 
-  for (const [cimaId, baixoId, quantidade, maxQuebradas] of gaps) {
-    const cima = girders.find((g) => g.id === cimaId)!;
-    const baixo = girders.find((g) => g.id === baixoId)!;
-    const [lo, hi] = overlapSpan(cima, baixo);
-    const margem = 22;
-    const spanMin = lo + margem;
-    const spanMax = hi - margem;
-
-    const posicoes: number[] = [];
-    let tentativas = 0;
-    while (posicoes.length < quantidade && tentativas < 40) {
-      tentativas++;
-      const x = spanMin + rnd() * Math.max(1, spanMax - spanMin);
-      if (posicoes.every((p) => Math.abs(p - x) >= 55)) posicoes.push(x);
-    }
-
-    // Garantia: pelo menos uma escada inteira por vão
-    let quebradas = 0;
-    for (const x of posicoes.sort((a, b) => a - b)) {
-      const desejaQuebrar = quebradas < maxQuebradas && rnd() < 0.55;
-      const broken = desejaQuebrar && posicoes.indexOf(x) > 0; // 1ª é sempre inteira
-      if (broken) quebradas++;
-
-      const yTop = girderYAt(cima, x);
-      const yBottom = girderYAt(baixo, x);
-      if (yTop === null || yBottom === null) continue;
-
-      const gapY = yTop + (yBottom - yTop) * (0.4 + rnd() * 0.25);
-      ladders.push({
-        x: Math.round(x),
-        yTop: Math.round(yTop),
-        yBottom: Math.round(yBottom),
-        broken,
-        brokenGapY: broken ? Math.round(gapY) : undefined,
-      });
+  // BFS do térreo (viga mais baixa) até a viga do topo (índice 0),
+  // usando apenas escadas inteiras.
+  let inicio = 0;
+  for (let i = 0; i < n; i++) {
+    if (girders[i].yEm(girders[i].x + girders[i].largura / 2) >
+        girders[inicio].yEm(girders[inicio].x + girders[inicio].largura / 2)) {
+      inicio = i;
     }
   }
 
-  return { girders, ladders };
+  const adj: Set<number>[] = Array.from({ length: n }, () => new Set());
+  for (const e of escadas) {
+    if (e.quebrada) continue;
+    adj[e.entre[0]].add(e.entre[1]);
+    adj[e.entre[1]].add(e.entre[0]);
+  }
+
+  const alcancado = new Set<number>([inicio]);
+  const fila = [inicio];
+  while (fila.length) {
+    const atual = fila.shift()!;
+    for (const vizinho of adj[atual]) {
+      if (!alcancado.has(vizinho)) {
+        alcancado.add(vizinho);
+        fila.push(vizinho);
+      }
+    }
+  }
+
+  if (!alcancado.has(0)) {
+    problemas.push('não há caminho do térreo ao topo usando apenas escadas inteiras');
+  }
+
+  // Todo martelo e item de bônus precisa estar ao alcance de uma viga alcançável.
+  const itens = [
+    ...(def.martelos ?? []).map((m) => ({ rotulo: 'martelo', x: m.x, y: m.y })),
+    ...def.itensBonus.map((i) => ({ rotulo: `item ${i.tipo}`, x: i.x, y: i.y })),
+  ];
+  for (const item of itens) {
+    let melhorDistancia = Infinity;
+    let vigiaMaisProxima = -1;
+    for (let i = 0; i < n; i++) {
+      if (item.x < girders[i].x - 8 || item.x > girders[i].x2 + 8) continue;
+      const d = Math.abs(girders[i].yEm(item.x) - item.y);
+      if (d < melhorDistancia) {
+        melhorDistancia = d;
+        vigiaMaisProxima = i;
+      }
+    }
+    if (vigiaMaisProxima === -1) {
+      problemas.push(`${item.rotulo} fora de qualquer viga`);
+    } else if (!alcancado.has(vigiaMaisProxima)) {
+      problemas.push(`${item.rotulo} inalcançável`);
+    }
+  }
+
+  // Nascimento de barril não pode ficar em cima do jogador.
+  if (Math.abs(def.barrilSpawn.x - def.jogadorSpawn.x) < 60
+      && Math.abs(def.barrilSpawn.y - def.jogadorSpawn.y) < 80) {
+    problemas.push('barril nasce em cima do jogador');
+  }
+
+  return problemas;
 }

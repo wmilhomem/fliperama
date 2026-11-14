@@ -3,1535 +3,1509 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * SALVE A HANNAH — Reescrita completa
+ *
+ * Fluxo clássico de fliperama de plataforma: abertura com rapto, 4 telas
+ * com perigos próprios (vigas e barris / esteiras e caixas de cimento /
+ * elevadores e molas / travas e bolas de fogo), cenas de rapto entre as
+ * telas, final de ciclo com desabamento e novos ciclos mais difíceis.
+ *
+ * Parâmetros de depuração: ?tela=1..4 e ?ciclo=N.
+ */
+
 import { EngineContext, GameInstance, GameModule, InputState } from '../../engine/types';
+import {
+  CHANCE_ESCADA_INTEIRA,
+  CHANCE_ESCADA_QUEBRADA,
+  COYOTE_MS,
+  BUFFER_PULO_MS,
+  dificuldadeDoCiclo,
+  GRAVIDADE,
+  MARTELO_DURACAO,
+  PULO_VELOCIDADE,
+  PONTOS_ITEM_BONUS,
+  PONTOS_INTERROMPER,
+  PONTOS_PULO_1,
+  PONTOS_PULO_2,
+  PONTOS_PULO_3,
+  PONTOS_VIDA_EXTRA_1,
+  TOLERANCIA_ESCADA,
+  VELOCIDADE_ESCADA,
+  VELOCIDADE_JOGADOR,
+  ALTURA_QUEDA_MORTE,
+} from './config';
+import {
+  construirTela,
+  validarTela,
+} from './estrutura';
+import { MotorDeCenas } from './cenas';
+import {
+  desenharBolaFogo,
+  desenharBolsa,
+  desenharBarril,
+  desenharCaixaMassa,
+  desenharChapeu,
+  desenharGuardaChuva,
+  desenharGrotao,
+  desenharHannah,
+  desenharMartelo,
+  desenharMola,
+  desenharTrava,
+  desenharZeca,
+} from './personagens';
+import {
+  EstruturaTela,
+  Segmento,
+  TipoItemBonus,
+} from './tipos';
+import { TELAS } from './telas';
 
-/* ==========================================================================
-   PALETA RETRÔ E ESTRUTURAS DO CENÁRIO DO "SALVE A HANNAH"
-   ========================================================================== */
+const LARGURA = 480;
+const ALTURA = 560;
 
-const PALETTE = {
-  black: '#000000',
-  redGirder: '#EF4444',
-  redGirderDark: '#991B1B',
-  rivetCyan: '#06B6D4',
-  ladderCyan: '#06B6D4',
-  woodBrown: '#A85A14',
-  woodDark: '#663300',
-  barrelOrange: '#FF7700',
-  oilBlue: '#1E40AF',
-  flameYellow: '#FFE600',
-  flameRed: '#FF3300',
-  hammerSteel: '#D1D5DB',
-  hammerWood: '#92400E',
-  hannahPink: '#FF69B4',
-  hannahDress: '#FFB6C1',
-  hannahHair: '#7A4A21',
-  zecaOveralls: '#2563EB',
-  zecaShirt: '#EF4444',
-  zecaSkin: '#FCD34D',
-  zecaShoes: '#78350F',
-  grotaoFur: '#45220C',
-  grotaoFurDark: '#2B1407',
-  grotaoSkin: '#D97706',
-  white: '#FFFFFF',
-  textYellow: '#FACC15',
-};
-
-import { gerarEstrutura, Girder, Ladder } from './estrutura';
-
-interface ItemBonus {
-  id: string;
-  type: 'chapeu' | 'bolsa' | 'guarda-chuva';
-  x: number;
-  y: number;
-  collected: boolean;
-  points: number;
-}
-
-interface HammerItem {
-  id: string;
-  x: number;
-  y: number;
-  collected: boolean;
-}
-
-function getGirderYAt(girder: Girder, x: number): number | null {
-  if (x < girder.xStart || x > girder.xEnd) return null;
-  const ratio = (x - girder.xStart) / (girder.xEnd - girder.xStart);
-  return girder.yStart + (girder.yEnd - girder.yStart) * ratio;
-}
-
-function findGirderBelow(
-  girders: Girder[],
-  x: number,
-  y: number,
-  tolerance = 12
-): { girder: Girder; surfaceY: number } | null {
-  for (const g of girders) {
-    const gy = getGirderYAt(g, x);
-    if (gy !== null) {
-      if (y >= gy - tolerance && y <= gy + tolerance + 4) {
-        return { girder: g, surfaceY: gy };
-      }
-    }
-  }
-  return null;
-}
-
-function checkBarrelGirderLanding(
-  girders: Girder[],
-  prevY: number,
-  currY: number,
-  x: number,
-  radius: number
-): { girder: Girder; surfaceY: number } | null {
-  for (const g of girders) {
-    if (x >= g.xStart - 4 && x <= g.xEnd + 4) {
-      const clampedX = Math.max(g.xStart, Math.min(g.xEnd, x));
-      const gy = getGirderYAt(g, clampedX);
-      if (gy !== null) {
-        const prevBottom = prevY + radius;
-        const currBottom = currY + radius;
-        if (prevBottom <= gy + 4 && currBottom >= gy - 6) {
-          return { girder: g, surfaceY: gy };
-        }
-      }
-    }
-  }
-  return null;
-}
-
-interface Particle {
+interface Jogador {
   x: number;
   y: number;
   vx: number;
   vy: number;
-  color: string;
-  size: number;
-  life: number;
+  largura: number;
+  altura: number;
+  onGround: boolean;
+  onLadder: boolean;
+  ladderId: number | null;
+  facing: 1 | -1;
+  walkFrame: number;
+  walkTimer: number;
+  marteloTimer: number;
+  invencivelTimer: number;
+  coyoteTimer: number;
+  bufferPulo: number;
+  morrendo: boolean;
+  morteTimer: number;
+  quedaOrigem: number;
 }
 
-interface Barrel {
+interface Barril {
   id: number;
   x: number;
   y: number;
   vx: number;
   vy: number;
   radius: number;
-  rotation: number;
-  isSpecial: boolean;
-  onLadder: boolean;
-  jumpScored: boolean;
-  currentGirderId: number | null;
+  azul: boolean;
+  descendoEscada: boolean;
+  escadaId: number | null;
+  rotacao: number;
+  pulado: boolean;
 }
 
-interface Fireball {
+interface BolaFogo {
   id: number;
   x: number;
   y: number;
   vx: number;
   vy: number;
   onLadder: boolean;
-  facing: 1 | -1;
-  climbCooldown: number;
-  changeDirCooldown: number;
+  ladderId: number | null;
+  mudarTimer: number;
+  subir: boolean;
 }
+
+interface CaixaMassa {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  rotacao: number;
+}
+
+interface Mola {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  quiques: number;
+  rotacao: number;
+}
+
+interface Elevador {
+  id: number;
+  x: number;
+  y: number;
+  yTop: number;
+  yBottom: number;
+  velocidade: number;
+  sentido: 1 | -1;
+}
+
+interface Trava {
+  id: number;
+  x: number;
+  y: number;
+  removida: boolean;
+  animacao: number;
+}
+
+interface ItemBonus {
+  id: string;
+  tipo: TipoItemBonus;
+  x: number;
+  y: number;
+  coletado: boolean;
+}
+
+interface MarteloItem {
+  id: string;
+  x: number;
+  y: number;
+  coletado: boolean;
+}
+
+interface Particula {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  cor: string;
+  tamanho: number;
+  vida: number;
+}
+
+const NOMES_TELA = ['TÍTULO', 'TELA 1', 'TELA 2', 'TELA 3', 'TELA 4'];
+const PREFIXO_RECORDE = 'hannah_ciclo_';
 
 export const hannahGameModule: GameModule = {
   id: 'hannah',
   titulo: 'Salve a Hannah',
-  descricao: 'Suba as vigas de aço da construção em obras e resgate Hannah das garras do temível gorila Grotão.',
+  descricao: 'Suba as vigas da obra e resgate Hannah do Grotão em 4 telas.',
   genero: 'Aventura de Resgate',
-  corTema: '#EF4444',
-  largura: 480,
-  altura: 560,
+  corTema: '#14B8A6',
+  largura: LARGURA,
+  altura: ALTURA,
   instrucoes: {
-    historia: 'O temível gorila Grotão sequestrou a jovem Hannah e a levou para o topo de uma imensa estrutura em obras. O destemido herói Zeca, um carpinteiro de macacão azul e boné, deve escalar os 5 andares de vigas inclinadas, desviar de barris rolantes e salvá-la!',
+    historia:
+      'O Grotão, um gorila gigante da construção, sequestrou a arquiteta Hannah e a levou para o topo de uma inacabada estrutura de aço. Zeca, um pedreiro de capacete amarelo, precisa subir de tela em tela, desviar de barris, bolas de fogo, caixas de massa, molas e travas, e salvar Hannah antes que o Grotão fuja com ela.',
     controles: [
-      'Setas / WASD / D-Pad: Mover e subir/descer escadas',
-      'Espaço / Botão A: Pular por cima dos barris',
-      'Tecla P: Pausar partida',
-      'Tecla R: Reiniciar partida',
+      'Setas Esquerda/Direita: andar',
+      'Setas Cima/Baixo ou W/S: subir e descer escadas',
+      'Espaço / Z / Botão A: pular',
+      'P: pausar · R: reiniciar',
     ],
     pontos: [
-      { acao: 'Pular por cima de um barril', pontos: 100 },
-      { acao: 'Esmagar barril com a marreta', pontos: 300 },
-      { acao: 'Coletar item da Hannah (chapéu, bolsa, guarda-chuva)', pontos: 500 },
-      { acao: 'Bônus de tempo ao resgatar Hannah', pontos: 5000 },
+      { acao: 'Pular um barril, caixa ou mola', pontos: PONTOS_PULO_1 },
+      { acao: 'Pular 2 seguidos', pontos: PONTOS_PULO_2 },
+      { acao: 'Pular 3 seguidos', pontos: PONTOS_PULO_3 },
+      { acao: 'Quebrar com o martelo', pontos: 300 },
+      { acao: 'Retirar uma trava', pontos: PONTOS_INTERROMPER },
+      { acao: 'Item de bônus (chapéu 300, bolsa 500, guarda-chuva 800)', pontos: 300 },
     ],
   },
+
   criar(ctx: EngineContext): GameInstance {
-    let estado: 'TITLE' | 'PLAYING' | 'VICTORY' | 'GAMEOVER' = 'TITLE';
-    let fase = 1;
-    let vidas = 3;
-    let bonusTimer = 5000;
-    let flashScreenTimer = 0;
-
-    // Entidades
-    let player = {
-      x: 80,
-      y: 520,
-      vx: 0,
-      vy: 0,
-      width: 18,
-      height: 24,
-      onGround: true,
-      isClimbing: false,
-      currentLadder: null as Ladder | null,
-      facing: 1 as 1 | -1,
-      isHammerActive: false,
-      hammerTimer: 0,
-      hammerSwingFrame: 0,
-      invincibleTimer: 0,
-      isDying: false,
-      deathTimer: 0,
-      walkFrame: 0,
-      walkTimer: 0,
-    };
-
-    let girders: Girder[] = [];
-    let ladders: Ladder[] = [];
-
-    let grotao = {
-      x: 95,
-      y: 85,
-      action: 'idle' as 'idle' | 'beatChest' | 'throwBarrel',
-      actionTimer: 0,
-      barrelSpawnTimer: 2.5,
-      isDefeated: false,
-    };
-
-    let hannah = {
-      x: 235,
-      y: 48,
-      speechTimer: 0,
-      heartTimer: 0,
-      hearts: [] as { x: number; y: number; vy: number; life: number }[],
-    };
-
-    let barrels: Barrel[] = [];
-    let nextBarrelId = 1;
-    let fireballs: Fireball[] = [];
-    let nextFireballId = 1;
-    let fireballSpawnTimer = 6.0;
-
-    let hammerItems: HammerItem[] = [];
-    let bonusItems: ItemBonus[] = [];
-    let particles: Particle[] = [];
-
-    function spawnParticles(x: number, y: number, color: string, count = 10, speed = 2.5) {
-      for (let i = 0; i < count; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const spd = (Math.random() * 0.8 + 0.2) * speed;
-        particles.push({
-          x,
-          y,
-          vx: Math.cos(angle) * spd,
-          vy: Math.sin(angle) * spd - 1,
-          color,
-          size: Math.random() * 2.5 + 1.5,
-          life: 0.6 + Math.random() * 0.4,
-        });
-      }
+    // ===== Parâmetros de depuração =====
+    let telaInicial = 0; // 0 = fluxo normal (abertura → tela 1)
+    let cicloInicial = 1;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const t = parseInt(params.get('tela') ?? '0', 10);
+      if (t >= 1 && t <= 4) telaInicial = t;
+      const c = parseInt(params.get('ciclo') ?? '1', 10);
+      if (Number.isFinite(c) && c >= 1) cicloInicial = c;
+    } catch {
+      // ambiente sem window (testes)
     }
 
-    function initLevel(novaFase: number, preservarPontos = false) {
-      fase = novaFase;
-      bonusTimer = Math.max(3000, 5000 - (novaFase - 1) * 300);
+    // ===== Estado do jogo =====
+    type Estado =
+      | 'TITLE'
+      | 'CENA'
+      | 'JOGANDO'
+      | 'TELA_CONCLUIDA'
+      | 'GAMEOVER';
 
-      // Estrutura nova a cada fase (determinística por fase)
-      const estrutura = gerarEstrutura(novaFase);
-      girders = estrutura.girders;
-      ladders = estrutura.ladders;
-      const gTopo = girders.find((g) => g.id === 0)!;
-      const gGrotao = girders.find((g) => g.id === 1)!;
-      const g3 = girders.find((g) => g.id === 3)!;
-      const g4 = girders.find((g) => g.id === 4)!;
-      const g2 = girders.find((g) => g.id === 2)!;
-      const yG3 = (x: number) => getGirderYAt(g3, x) ?? 250;
-      const yG4 = (x: number) => getGirderYAt(g4, x) ?? 340;
-      const yG2 = (x: number) => getGirderYAt(g2, x) ?? 160;
-      const centroG = (g: { xStart: number; xEnd: number; yStart: number; yEnd: number }) => ({
-        x: (Math.min(g.xStart, g.xEnd) + Math.max(g.xStart, g.xEnd)) / 2,
-        y: (g.yStart + g.yEnd) / 2,
-      });
-      const topoHannah = centroG(gTopo);
-      const topoGrotao = centroG(gGrotao);
+    let estado: Estado = 'TITLE';
+    let telaIndice = telaInicial > 0 ? telaInicial - 1 : 0;
+    let ciclo = cicloInicial;
+    let estrutura: EstruturaTela = construirTela(TELAS[telaIndice]);
+    let problemas = validarTela(estrutura);
+    if (problemas.length > 0) {
+      console.warn('[hannah] Validação da tela falhou:', problemas);
+    }
 
-      if (!preservarPontos) {
-        vidas = 3;
-        ctx.hud.definirEstado({
-          pontuacao: 0,
-          recorde: ctx.storage.lerRecorde(ctx.id),
-          vidas: 3,
-          fase: novaFase,
-          bonus: bonusTimer,
-        });
-      } else {
-        ctx.hud.definirEstado({
-          vidas,
-          fase: novaFase,
-          bonus: bonusTimer,
-        });
-      }
+    let vidas = 3;
+    let bonus = estrutura.def.bonusInicial;
+    let bonusContador = 0;
+    let vidasExtraGanho = false;
+    let totalBarrisPulados = 0;
+    let totalBarrisQuebrados = 0;
+    let telasSemPerderVida = 0;
+    let perdeuVidaNaTela = false;
+    let tempoTotalJogo = 0;
 
-      player = {
-        x: 80,
-        y: 520,
+    const desafio = () => dificuldadeDoCiclo(ciclo);
+
+    // ===== Entidades =====
+    let jogador: Jogador = criarJogador();
+    let grotao = {
+      x: estrutura.def.grotao.x,
+      y: estrutura.def.grotao.y,
+      frame: 0,
+      timerQuebra: 0,
+      timerMola: 0,
+    };
+    let hannah = { x: estrutura.def.hannah.x, y: estrutura.def.hannah.y };
+    let barris: Barril[] = [];
+    let bolasFogo: BolaFogo[] = [];
+    let caixas: CaixaMassa[] = [];
+    let molas: Mola[] = [];
+    let elevadores: Elevador[] = [];
+    let travas: Trava[] = [];
+    let martelos: MarteloItem[] = [];
+    let itensBonus: ItemBonus[] = [];
+    let particulas: Particula[] = [];
+    let barrilTimer = 2;
+    let caixaTimer = 3;
+    let proximaTravaAnim = 0;
+    let bonusTickTimer = 0;
+    let avisoBonus10s = false;
+    let tremor = 0;
+    let pulosSeguidos = 0;
+    let pulosSeguidosTimer = 0;
+    let cena: MotorDeCenas | null = null;
+    let cenaApos: (() => void) | null = null;
+
+    function criarJogador(): Jogador {
+      return {
+        x: estrutura.def.jogadorSpawn.x,
+        y: estrutura.def.jogadorSpawn.y,
         vx: 0,
         vy: 0,
-        width: 18,
-        height: 24,
+        largura: 16,
+        altura: 24,
         onGround: true,
-        isClimbing: false,
-        currentLadder: null,
+        onLadder: false,
+        ladderId: null,
         facing: 1,
-        isHammerActive: false,
-        hammerTimer: 0,
-        hammerSwingFrame: 0,
-        invincibleTimer: 0,
-        isDying: false,
-        deathTimer: 0,
         walkFrame: 0,
         walkTimer: 0,
+        marteloTimer: 0,
+        invencivelTimer: 0,
+        coyoteTimer: 0,
+        bufferPulo: 0,
+        morrendo: false,
+        morteTimer: 0,
+        quedaOrigem: estrutura.def.jogadorSpawn.y,
       };
-
-      grotao = {
-        x: topoGrotao.x,
-        y: topoGrotao.y - 40,
-        action: 'idle',
-        actionTimer: 0,
-        barrelSpawnTimer: Math.max(1.8, 3.5 - novaFase * 0.3),
-        isDefeated: false,
-      };
-
-      hannah = {
-        x: topoHannah.x,
-        y: topoHannah.y - 27,
-        speechTimer: 0,
-        heartTimer: 0,
-        hearts: [],
-      };
-
-      barrels = [];
-      fireballs = [];
-      particles = [];
-      fireballSpawnTimer = Math.max(5.0, 9.0 - novaFase * 0.8);
-
-      const marreta1X = g4.xStart + (g4.xEnd - g4.xStart) * 0.25;
-      const marreta2X = g3.xStart + (g3.xEnd - g3.xStart) * 0.78;
-      hammerItems = [
-        { id: 'h1', x: marreta1X, y: yG4(marreta1X) - 4, collected: false },
-        { id: 'h2', x: marreta2X, y: yG3(marreta2X) - 4, collected: false },
-      ];
-
-      bonusItems = [
-        { id: 'b1', type: 'chapeu', x: topoHannah.x + 34, y: topoHannah.y - 4, collected: false, points: 500 },
-        { id: 'b2', type: 'bolsa', x: g2.xEnd - 55, y: yG2(g2.xEnd - 55) - 4, collected: false, points: 500 },
-        {
-          id: 'b3',
-          type: 'guarda-chuva',
-          x: g3.xStart + (g3.xEnd - g3.xStart) * 0.18,
-          y: yG3(g3.xStart + (g3.xEnd - g3.xStart) * 0.18) - 4,
-          collected: false,
-          points: 500,
-        },
-      ];
-
-      estado = 'PLAYING';
     }
 
-    function handlePlayerDeath() {
-      if (player.isDying || player.invincibleTimer > 0) return;
-
-      player.isDying = true;
-      player.deathTimer = 1.8;
-      player.isHammerActive = false;
-      ctx.audio.tocar('vidaPerdida');
-      spawnParticles(player.x, player.y, PALETTE.redGirder, 16, 3);
-
-      vidas = ctx.hud.perderVida();
-    }
-
-    function handleVictory() {
-      estado = 'VICTORY';
-      ctx.audio.tocar('vitoria');
-      grotao.isDefeated = true;
-      flashScreenTimer = 0.5;
-
-      const remainingBonus = Math.floor(bonusTimer);
-      if (remainingBonus > 0) {
-        ctx.hud.adicionarPontos(remainingBonus, ctx.largura / 2 - 20, 180, '#4ADE80');
+    // ===== Carga de tela =====
+    function carregarTela(indice: number, manterVidas = true) {
+      telaIndice = indice;
+      estrutura = construirTela(TELAS[indice]);
+      problemas = validarTela(estrutura);
+      if (problemas.length > 0) {
+        console.warn('[hannah] Validação da tela falhou:', problemas);
       }
 
-      ctx.finalizarJogo('vitoria');
+      if (!manterVidas) vidas = 3;
 
-      for (let i = 0; i < 8; i++) {
-        hannah.hearts.push({
-          x: hannah.x - 20 + Math.random() * 40,
-          y: hannah.y - 10 + Math.random() * 10,
-          vy: -1 - Math.random() * 1.5,
-          life: 2.0,
+      bonus = estrutura.def.bonusInicial;
+      bonusContador = 0;
+      avisoBonus10s = false;
+      perdeuVidaNaTela = false;
+      pulosSeguidos = 0;
+
+      jogador = criarJogador();
+
+      grotao = {
+        x: estrutura.def.grotao.x,
+        y: estrutura.def.grotao.y,
+        frame: 0,
+        timerQuebra: 0,
+        timerMola: 0,
+      };
+      hannah = { x: estrutura.def.hannah.x, y: estrutura.def.hannah.y };
+
+      barris = [];
+      bolasFogo = [];
+      caixas = [];
+      molas = [];
+      particulas = [];
+      barrilTimer = desafio().barrilIntervalo;
+      caixaTimer = 3;
+      bonusTickTimer = 0;
+
+      // Martelos da tela
+      martelos = (estrutura.def.martelos ?? []).map((m, i) => ({
+        id: `m${i}`,
+        x: m.x,
+        y: m.y,
+        coletado: false,
+      }));
+
+      // Itens de bônus
+      itensBonus = estrutura.def.itensBonus.map((i, idx) => ({
+        id: `b${idx}`,
+        tipo: i.tipo,
+        x: i.x,
+        y: i.y,
+        coletado: false,
+      }));
+
+      // Elevadores (Tela 3)
+      elevadores = (estrutura.def.elevadores ?? []).map((e, i) => ({
+        id: i,
+        x: e.x,
+        y: e.yBottom,
+        yTop: e.yTop,
+        yBottom: e.yBottom,
+        velocidade: e.velocidade,
+        sentido: 1 as const,
+      }));
+
+      // Travas (Tela 4)
+      travas = (estrutura.def.travas ?? []).map((t, i) => ({
+        id: i,
+        x: t.x,
+        y: t.y,
+        removida: false,
+        animacao: 0,
+      }));
+
+      // Bolas de fogo (quantidade conforme dificuldade e tela)
+      const qtdBolas = telaIndice === 3
+        ? Math.min(5, 2 + ciclo)
+        : telaIndice === 0
+          ? desafio().bolasFogo
+          : telaIndice === 1
+            ? 1
+            : 1; // Tela 3: uma bola de fogo no topo
+
+      for (let i = 0; i < qtdBolas; i++) {
+        const g = estrutura.girders[
+          telaIndice === 3 ? 1 + (i % 3) : telaIndice === 0 ? 2 : telaIndice === 2 ? 0 : 1
+        ];
+        bolasFogo.push({
+          id: i + 1,
+          x: 100 + i * 140,
+          y: g.yEm(100 + i * 140) - 8,
+          vx: i % 2 === 0 ? -desafio().velocidadeBolaFogo : desafio().velocidadeBolaFogo,
+          vy: 0,
+          onLadder: false,
+          ladderId: null,
+          mudarTimer: 2 + Math.random() * 2,
+          subir: false,
         });
       }
     }
+
+    function irParaTela(indice: number) {
+      carregarTela(indice, true);
+      estado = 'JOGANDO';
+    }
+
+    // ===== Fluxo principal =====
+    function iniciarCena(tipo: 'abertura' | 'rapto' | 'final', aoTerminar: () => void) {
+      const instancia = new MotorDeCenas();
+      instancia.iniciar({
+        tipo,
+        alturaMetros: estrutura.def.alturaMetros,
+        ciclo,
+      });
+      cena = instancia;
+      cenaApos = aoTerminar;
+      estado = 'CENA';
+    }
+
+    function iniciarPartida() {
+      telaIndice = telaInicial > 0 ? telaInicial - 1 : 0;
+      ciclo = cicloInicial;
+      vidas = 3;
+      vidasExtraGanho = false;
+      totalBarrisPulados = 0;
+      totalBarrisQuebrados = 0;
+      telasSemPerderVida = 0;
+      tempoTotalJogo = 0;
+      perdeuVidaNaTela = false;
+
+      ctx.hud.definirEstado({
+        pontuacao: 0,
+        recorde: ctx.storage.lerRecorde(ctx.id),
+        vidas: 3,
+        fase: telaIndice + 1,
+        bonus,
+      });
+
+      if (telaInicial > 0) {
+        carregarTela(telaIndice, false);
+        estado = 'JOGANDO';
+        return;
+      }
+
+      iniciarCena('abertura', () => {
+        irParaTela(0);
+      });
+    }
+
+    // ===== Atualização por estado =====
+    function atualizarJogando(dt: number, input: InputState) {
+      const dtSeguro = Math.min(dt, 0.05);
+      tempoTotalJogo += dtSeguro;
+      tremor = Math.max(0, tremor - dtSeguro * 3);
+      pulosSeguidosTimer = Math.max(0, pulosSeguidosTimer - dtSeguro);
+      if (pulosSeguidosTimer <= 0) pulosSeguidos = 0;
+
+      jogador.invencivelTimer = Math.max(0, jogador.invencivelTimer - dtSeguro);
+      jogador.marteloTimer = Math.max(0, jogador.marteloTimer - dtSeguro);
+
+      if (jogador.morrendo) {
+        jogador.morteTimer -= dtSeguro;
+        if (jogador.morteTimer <= 0) {
+          if (vidas <= 0) {
+            estado = 'GAMEOVER';
+            ctx.finalizarJogo('gameOver');
+          } else {
+            jogador = criarJogador();
+            jogador.invencivelTimer = 2;
+            bonus = estrutura.def.bonusInicial;
+            bonusContador = 0;
+            avisoBonus10s = false;
+          }
+        }
+        atualizarParticulas(dtSeguro);
+        return;
+      }
+
+      // Contador de bônus
+      bonusContador += dtSeguro;
+      if (bonusContador >= desafio().bonusTickSeg) {
+        bonusContador = 0;
+        bonus = Math.max(0, bonus - 100);
+        if (bonus === 0) {
+          perderVida();
+          return;
+        }
+        if (bonus <= 1000 && !avisoBonus10s) {
+          avisoBonus10s = true;
+          ctx.audio.tocar('alerta');
+        } else if (bonus <= 1000) {
+          ctx.audio.tocar('alerta');
+        }
+      }
+
+      moverJogador(dtSeguro, input);
+      atualizarBarris(dtSeguro);
+      atualizarBolasFogo(dtSeguro);
+      atualizarCaixas(dtSeguro);
+      atualizarMolas(dtSeguro);
+      atualizarElevadores(dtSeguro);
+      atualizarTravas(dtSeguro);
+      atualizarItens(dtSeguro);
+      atualizarParticulas(dtSeguro);
+      atualizarEsteiraTopo(dtSeguro);
+
+      grotao.frame += dtSeguro * 60;
+      if (telaIndice === 2) {
+        grotao.timerMola -= dtSeguro;
+        if (grotao.timerMola <= 0) {
+          grotao.timerMola = desafio().molaIntervalo;
+          lancarMola();
+        }
+      }
+
+      // Vitória na tela: tocar na Hannah
+      if (Math.abs(jogador.x - hannah.x) < 22 && Math.abs(jogador.y - hannah.y) < 30) {
+        concluirTela();
+        return;
+      }
+    }
+
+    // ===== Jogador =====
+    function moverJogador(dt: number, input: InputState) {
+      const j = jogador;
+      const comMartelo = j.marteloTimer > 0;
+
+      j.coyoteTimer = Math.max(0, j.coyoteTimer - dt);
+      j.bufferPulo = Math.max(0, j.bufferPulo - dt);
+
+      // Prioridade vertical dentro de uma escada
+      if (j.onLadder) {
+        if (input.cima) {
+          j.y -= VELOCIDADE_ESCADA * dt;
+          j.walkTimer += dt;
+        } else if (input.baixo) {
+          j.y += VELOCIDADE_ESCADA * dt;
+          j.walkTimer += dt;
+        }
+        if (j.walkTimer > 0.12) {
+          j.walkTimer = 0;
+          j.walkFrame++;
+        }
+        // Sair da escada no topo/base
+        const escada = estrutura.escadas.find((e) => e.x === j.x);
+        if (escada) {
+          if (j.y <= escada.yTop + 2 || j.y >= escada.yBottom - 2) {
+            j.onLadder = false;
+            j.ladderId = null;
+          }
+        } else {
+          j.onLadder = false;
+          j.ladderId = null;
+        }
+      } else {
+        // Andar
+        let move = 0;
+        if (input.esquerda) move -= 1;
+        if (input.direita) move += 1;
+        j.vx = move * VELOCIDADE_JOGADOR;
+        j.x += j.vx * dt;
+        j.facing = move !== 0 ? (move > 0 ? 1 : -1) : j.facing;
+        if (move !== 0) {
+          j.walkTimer += dt;
+          if (j.walkTimer > 0.12) {
+            j.walkTimer = 0;
+            j.walkFrame++;
+          }
+        }
+
+        // Esteira empurra o jogador
+        const vigia = encontrarSegmentoDe(j.x, j.y);
+        if (vigia?.esteira) {
+          j.x += (vigia.sentidoEsteira ?? 1) * 60 * dt;
+        }
+
+        // Pular (com buffer + coyote)
+        if (input.acaoPressionada) j.bufferPulo = BUFFER_PULO_MS / 1000;
+        if (j.bufferPulo > 0 && (j.onGround || j.coyoteTimer > 0) && !comMartelo) {
+          j.vy = -PULO_VELOCIDADE;
+          j.onGround = false;
+          j.coyoteTimer = 0;
+          j.bufferPulo = 0;
+          ctx.audio.tocar('pulo');
+        }
+
+        // Gravidade
+        j.vy += GRAVIDADE * dt;
+        j.y += j.vy * dt;
+
+        // Agarrar escada (tolerância de 6 px)
+        if (!j.onLadder) {
+          const escada = estrutura.escadas.find(
+            (e) => !e.quebrada && Math.abs(j.x - e.x) <= TOLERANCIA_ESCADA && j.y >= e.yTop - 4 && j.y <= e.yBottom + 4
+          );
+          if (escada && (input.cima || input.baixo) && !comMartelo) {
+            j.onLadder = true;
+            j.x = escada.x;
+            j.ladderId = estrutura.escadas.indexOf(escada);
+            j.vy = 0;
+          }
+        }
+      }
+
+      // Colisão com as vigas (pouso)
+      if (!j.onLadder) {
+        const vigia = encontrarSegmentoDe(j.x, j.y + j.altura);
+        if (vigia) {
+          const superficie = vigia.yEm(j.x);
+          if (j.y + j.altura >= superficie && j.vy >= 0 && j.y + j.altura - superficie < 26) {
+            // Morte por queda se caiu de altura maior que um andar
+            if (j.quedaOrigem > 0 && j.y + j.altura - j.quedaOrigem > ALTURA_QUEDA_MORTE && j.vy > 300) {
+              perderVida();
+              return;
+            }
+            j.y = superficie - j.altura;
+            j.vy = 0;
+            j.onGround = true;
+            j.coyoteTimer = COYOTE_MS / 1000;
+            j.quedaOrigem = j.y + j.altura;
+          }
+        } else {
+          if (j.onGround) j.coyoteTimer = COYOTE_MS / 1000;
+          j.onGround = false;
+        }
+      }
+
+      // Limites laterais
+      j.x = Math.max(8, Math.min(LARGURA - 8 - j.largura, j.x));
+
+      // Cair no vazio
+      if (j.y > ALTURA + 30) perderVida();
+    }
+
+    function encontrarSegmentoDe(x: number, y: number): Segmento | null {
+      for (const vigia of estrutura.girders) {
+        if (x >= vigia.x - 6 && x <= vigia.x2 + 6) {
+          const sup = vigia.yEm(x);
+          if (Math.abs(y - sup) < 10) return vigia;
+        }
+      }
+      return null;
+    }
+
+    function perderVida() {
+      if (jogador.invencivelTimer > 0) return;
+      vidas = ctx.hud.perderVida();
+      perdeuVidaNaTela = true;
+      jogador.morrendo = true;
+      jogador.morteTimer = 1.6;
+      ctx.audio.tocar('vidaPerdida');
+      tremor = 1;
+      ctx.hud.definirEstado({ vidas });
+    }
+
+    function concluirTela() {
+      // Bônus restante + pontos da tela
+      ctx.hud.adicionarPontos(bonus, larguraCentro(), 140, '#4ADE80');
+      ctx.hud.adicionarPontos(telaIndice === 3 ? 2000 : 1000, larguraCentro(), 170, '#FACC15');
+      if (!perdeuVidaNaTela) {
+        telasSemPerderVida++;
+        ctx.hud.adicionarPontos(2000, larguraCentro(), 200, '#F472B6');
+      }
+      ctx.audio.tocar('vitoria');
+
+      if (telaIndice === 3) {
+        // Final do ciclo
+        iniciarCena('final', () => {
+          ciclo += 1;
+          carregarTela(0, false);
+          estado = 'JOGANDO';
+          ctx.hud.definirEstado({ bonus });
+        });
+        return;
+      }
+
+      // Cena de rapto para a próxima tela
+      iniciarCena('rapto', () => {
+        irParaTela(telaIndice + 1);
+      });
+    }
+
+    function larguraCentro() {
+      return LARGURA / 2;
+    }
+
+    // ===== Barris (Tela 1) =====
+    function atualizarBarris(dt: number) {
+      barrilTimer -= dt;
+      if (barrilTimer <= 0 && telaIndice === 0) {
+        barrilTimer = desafio().barrilIntervalo * (0.7 + Math.random() * 0.6);
+        const azul = Math.random() < 0.22;
+        const spawnG = estrutura.girders[0];
+        barris.push({
+          id: Date.now() + Math.floor(Math.random() * 1000),
+          x: estrutura.def.barrilSpawn.x,
+          y: estrutura.def.barrilSpawn.y,
+          vx: spawnG.direcao * desafio().barrilVelocidade,
+          vy: 0,
+          radius: 8,
+          azul,
+          descendoEscada: false,
+          escadaId: null,
+          rotacao: 0,
+          pulado: false,
+        });
+        ctx.audio.tocar('barril');
+      }
+
+      const ativos: Barril[] = [];
+      for (const b of barris) {
+        b.rotacao += (b.vx / b.radius) * dt;
+
+        if (b.descendoEscada && b.escadaId !== null) {
+          const escada = estrutura.escadas[b.escadaId];
+          b.y += 85 * dt;
+          b.x = escada.x;
+          // Pousou na viga de baixo
+          const vigia = encontrarSegmentoDe(b.x, b.y + b.radius);
+          if (vigia && b.y + b.radius >= vigia.yEm(b.x)) {
+            b.y = vigia.yEm(b.x) - b.radius;
+            b.descendoEscada = false;
+            b.escadaId = null;
+            b.vx = vigia.direcao * desafio().barrilVelocidade;
+            b.vy = 0;
+            ctx.audio.tocar('barril');
+            for (let i = 0; i < 5; i++) {
+              particulas.push({
+                x: b.x, y: b.y + b.radius,
+                vx: (Math.random() - 0.5) * 80, vy: -Math.random() * 60,
+                cor: '#A8A29E', tamanho: 2, vida: 0.5,
+              });
+            }
+          }
+          ativos.push(b);
+          continue;
+        }
+
+        // Gravidade / pouso em vigas
+        const vigia = encontrarSegmentoDe(b.x, b.y + b.radius);
+        if (vigia) {
+          const superficie = vigia.yEm(b.x);
+          if (b.y + b.radius >= superficie && b.vy >= 0) {
+            // Chance de descer por uma escada que cruza aqui
+            let desceu = false;
+            for (const escada of estrutura.escadas) {
+              if (escada.yTop < b.y + 4 && escada.yBottom > b.y + b.radius) {
+                const chance = escada.quebrada ? CHANCE_ESCADA_QUEBRADA : CHANCE_ESCADA_INTEIRA;
+                if (Math.random() < chance) {
+                  b.descendoEscada = true;
+                  b.escadaId = estrutura.escadas.indexOf(escada);
+                  b.x = escada.x;
+                  b.vx = 0;
+                  b.vy = 0;
+                  desceu = true;
+                  if (escada.quebrada) {
+                    ctx.audio.tocar('batida');
+                    tremor = Math.max(tremor, 0.35);
+                  }
+                  break;
+                }
+              }
+            }
+            if (!desceu) {
+              b.y = superficie - b.radius;
+              b.vy = 0;
+              b.vx = vigia.direcao * desafio().barrilVelocidade;
+            }
+          } else {
+            b.vy += GRAVIDADE * dt;
+            b.y += b.vy * dt;
+          }
+        } else {
+          b.vy += GRAVIDADE * dt;
+          b.y += b.vy * dt;
+        }
+
+        // Esteira empurra o barril
+        if (vigia?.esteira) {
+          b.x += (vigia.sentidoEsteira ?? 1) * 45 * dt;
+        }
+        b.x += b.vx * dt;
+
+        // Barril azul que chega ao barril de óleo → bola de fogo
+        const oleo = estrutura.def.barrilOleo;
+        if (oleo && b.azul && b.y > ALTURA - 80 && Math.abs(b.x - oleo.x) < 30) {
+          ctx.audio.tocar('alerta');
+          bolasFogo.push({
+            id: Date.now() + 7,
+            x: oleo.x,
+            y: oleo.y - 10,
+            vx: desafio().velocidadeBolaFogo * (Math.random() < 0.5 ? 1 : -1),
+            vy: 0,
+            onLadder: false,
+            ladderId: null,
+            mudarTimer: 2,
+            subir: false,
+          });
+          continue; // barril some (vira fogo)
+        }
+
+        // Barril saiu por baixo → some com respingo
+        if (b.y > ALTURA + 20) {
+          ctx.audio.tocar('propulsor');
+          continue;
+        }
+
+        // Martelo destrói barril
+        if (jogador.marteloTimer > 0 &&
+            Math.abs(b.x - jogador.x) < 18 &&
+            Math.abs(b.y - (jogador.y + 12)) < 22) {
+          totalBarrisQuebrados++;
+          const pontos = 300 + Math.floor(Math.random() * 3) * 150;
+          ctx.hud.adicionarPontos(pontos, b.x, b.y - 10, '#FBBF24');
+          ctx.audio.tocar('marreta');
+          contextoParticulas(b.x, b.y, '#B45309');
+          continue;
+        }
+
+        // Jogador pula sobre barril
+        if (!jogador.onGround && !b.pulado &&
+            Math.abs(b.x - jogador.x) < 18 &&
+            jogador.y + jogador.altura < b.y) {
+          b.pulado = true;
+          pulosSeguidos++;
+          pulosSeguidosTimer = 1.5;
+          const bonus = pulosSeguidos >= 3 ? PONTOS_PULO_3 : pulosSeguidos === 2 ? PONTOS_PULO_2 : PONTOS_PULO_1;
+          ctx.hud.adicionarPontos(bonus, b.x, b.y - 10, '#FDE68A');
+          totalBarrisPulados++;
+        }
+
+        // Colisão fatal
+        if (jogador.invencivelTimer <= 0 &&
+            Math.hypot(b.x - jogador.x, b.y - (jogador.y + 12)) < b.radius + 7) {
+          perderVida();
+          return;
+        }
+
+        ativos.push(b);
+      }
+      barris = ativos;
+    }
+
+    // ===== Bolas de fogo =====
+    function atualizarBolasFogo(dt: number) {
+      const agressivas = telaIndice === 3;
+      for (const fb of bolasFogo) {
+        fb.mudarTimer -= dt;
+
+        // Subir/descer escadas
+        if (fb.onLadder && fb.ladderId !== null) {
+          const escada = estrutura.escadas[fb.ladderId];
+          fb.y += (fb.subir ? -1 : 1) * desafio().velocidadeBolaFogo * 0.8 * dt;
+          fb.x = escada.x;
+          if (fb.y <= escada.yTop || fb.y >= escada.yBottom) fb.onLadder = false;
+          continue;
+        }
+
+        // Anda na viga; quica nas bordas
+        const vigia = encontrarSegmentoDe(fb.x, fb.y + 8);
+        if (vigia) {
+          fb.y = vigia.yEm(fb.x) - 8;
+          fb.x += fb.vx * dt;
+          if (fb.x < vigia.x + 4 || fb.x > vigia.x2 - 4) {
+            fb.vx *= -1;
+            fb.x = Math.max(vigia.x + 4, Math.min(vigia.x2 - 4, fb.x));
+          }
+          // Decidir entrar numa escada
+          if (fb.mudarTimer <= 0) {
+            fb.mudarTimer = 2 + Math.random() * 2.5;
+            const escada = estrutura.escadas.find(
+              (e) => !e.quebrada && Math.abs(fb.x - e.x) < 12 && fb.y >= e.yTop && fb.y <= e.yBottom
+            );
+            if (escada) {
+              fb.onLadder = true;
+              fb.ladderId = estrutura.escadas.indexOf(escada);
+              fb.subir = agressivas ? hannah.y < fb.y : Math.random() < 0.5;
+              continue;
+            }
+            if (agressivas) {
+              fb.vx = (jogador.x < fb.x ? -1 : 1) * desafio().velocidadeBolaFogo;
+            } else if (Math.random() < 0.45) {
+              fb.vx *= -1;
+            }
+          }
+        } else {
+          // Queda livre
+          fb.vy += GRAVIDADE * dt;
+          fb.y += fb.vy * dt;
+          fb.x += fb.vx * dt;
+          const pouso = encontrarSegmentoDe(fb.x, fb.y + 8);
+          if (pouso) {
+            fb.y = pouso.yEm(fb.x) - 8;
+            fb.vy = 0;
+          }
+        }
+
+        // Martelo destrói bola de fogo
+        if (jogador.marteloTimer > 0 &&
+            Math.abs(fb.x - jogador.x) < 18 &&
+            Math.abs(fb.y - (jogador.y + 12)) < 20) {
+          ctx.hud.adicionarPontos(500, fb.x, fb.y - 10, '#FDE68A');
+          ctx.audio.tocar('marreta');
+          contextoParticulas(fb.x, fb.y, '#F97316');
+          fb.y = ALTURA + 100;
+          continue;
+        }
+
+        // Colisão fatal
+        if (jogador.invencivelTimer <= 0 &&
+            Math.hypot(fb.x - jogador.x, fb.y - (jogador.y + 12)) < 12) {
+          perderVida();
+          return;
+        }
+      }
+      bolasFogo = bolasFogo.filter((fb) => fb.y < ALTURA + 40);
+    }
+
+    // ===== Caixas de massa (Tela 2) =====
+    function atualizarCaixas(dt: number) {
+      if (telaIndice === 1) {
+        caixaTimer -= dt;
+        if (caixaTimer <= 0) {
+          caixaTimer = 2.6;
+          const ponto = estrutura.def.spawnCaixas![Math.floor(Math.random() * 2)];
+          caixas.push({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            x: ponto.x,
+            y: ponto.y,
+            vx: ponto.sentido * 70,
+            vy: 0,
+            rotacao: 0,
+          });
+        }
+      }
+
+      const ativas: CaixaMassa[] = [];
+      for (const c of caixas) {
+        // Na viga da esteira central
+        const vigia = encontrarSegmentoDe(c.x, c.y + 8);
+        if (vigia) {
+          c.y = vigia.yEm(c.x) - 8;
+          c.vx = (vigia.sentidoEsteira ?? 1) * 70;
+          c.x += c.vx * dt;
+          c.rotacao += (c.vx / 40) * dt;
+        } else {
+          c.vy += GRAVIDADE * dt;
+          c.y += c.vy * dt;
+          c.x += c.vx * dt;
+          const pouso = encontrarSegmentoDe(c.x, c.y + 8);
+          if (pouso) {
+            c.y = pouso.yEm(c.x) - 8;
+            c.vy = 0;
+          }
+        }
+
+        // Martelo destrói
+        if (jogador.marteloTimer > 0 &&
+            Math.abs(c.x - jogador.x) < 20 &&
+            Math.abs(c.y - (jogador.y + 12)) < 20) {
+          ctx.hud.adicionarPontos(300, c.x, c.y - 10, '#FDE68A');
+          ctx.audio.tocar('marreta');
+          contextoParticulas(c.x, c.y, '#A8A29E');
+          continue;
+        }
+
+        if (!jogador.onGround && Math.abs(c.x - jogador.x) < 18 &&
+            jogador.y + jogador.altura < c.y) {
+          pulosSeguidos++;
+          pulosSeguidosTimer = 1.5;
+          const bonus = pulosSeguidos >= 3 ? PONTOS_PULO_3 : pulosSeguidos === 2 ? PONTOS_PULO_2 : PONTOS_PULO_1;
+          ctx.hud.adicionarPontos(bonus, c.x, c.y - 10, '#FDE68A');
+        }
+
+        if (jogador.invencivelTimer <= 0 &&
+            Math.abs(c.x - jogador.x) < 17 &&
+            Math.abs(c.y - (jogador.y + 12)) < 14) {
+          perderVida();
+          return;
+        }
+
+        if (c.y > ALTURA + 30 || c.x < -60 || c.x > LARGURA + 60) continue;
+        ativas.push(c);
+      }
+      caixas = ativas;
+    }
+
+    // ===== Molas (Tela 3) =====
+    function lancarMola() {
+      const dir = jogador.x < grotao.x ? -1 : 1;
+      molas.push({
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        x: grotao.x,
+        y: grotao.y,
+        vx: dir * desafio().molaVelocidade,
+        vy: -160,
+        quiques: 0,
+        rotacao: 0,
+      });
+      ctx.audio.tocar('bumper');
+    }
+
+    function atualizarMolas(dt: number) {
+      const ativas: Mola[] = [];
+      for (const m of molas) {
+        m.vy += GRAVIDADE * 0.75 * dt;
+        m.x += m.vx * dt;
+        m.y += m.vy * dt;
+        m.rotacao += dt * 6;
+
+        const vigia = encontrarSegmentoDe(m.x, m.y + 8);
+        if (vigia && m.vy > 0) {
+          m.y = vigia.yEm(m.x) - 8;
+          m.vy = -Math.abs(m.vy) * 0.72;
+          m.quiques++;
+          ctx.audio.tocar('bumper');
+          for (let i = 0; i < 4; i++) {
+            particulas.push({
+              x: m.x, y: m.y + 8,
+              vx: (Math.random() - 0.5) * 60, vy: -Math.random() * 40,
+              cor: '#F87171', tamanho: 2, vida: 0.4,
+            });
+          }
+        }
+
+        if (jogador.marteloTimer > 0 &&
+            Math.abs(m.x - jogador.x) < 18 &&
+            Math.abs(m.y - (jogador.y + 12)) < 18) {
+          ctx.hud.adicionarPontos(500, m.x, m.y - 10, '#FBBF24');
+          ctx.audio.tocar('marreta');
+          contextoParticulas(m.x, m.y, '#DC2626');
+          continue;
+        }
+
+        if (!jogador.onGround && Math.abs(m.x - jogador.x) < 18 &&
+            jogador.y + jogador.altura < m.y) {
+          pulosSeguidos++;
+          pulosSeguidosTimer = 1.5;
+          ctx.hud.adicionarPontos(PONTOS_PULO_1, m.x, m.y - 10, '#FDE68A');
+        }
+
+        if (jogador.invencivelTimer <= 0 &&
+            Math.abs(m.x - jogador.x) < 15 &&
+            Math.abs(m.y - (jogador.y + 12)) < 14) {
+          perderVida();
+          return;
+        }
+
+        if (m.quiques > 2 || m.y > ALTURA + 20 || m.x < -50 || m.x > LARGURA + 50) continue;
+        ativas.push(m);
+      }
+      molas = ativas;
+    }
+
+    // ===== Elevadores (Tela 3) =====
+    function atualizarElevadores(dt: number) {
+      for (const el of elevadores) {
+        el.y += el.sentido * el.velocidade * dt;
+        if (el.y <= el.yTop) {
+          el.y = el.yTop;
+          el.sentido = 1;
+        } else if (el.y >= el.yBottom) {
+          el.y = el.yBottom;
+          el.sentido = -1;
+        }
+        // Carregar o jogador se estiver em cima
+        if (Math.abs(jogador.x - el.x) < 26 && Math.abs(jogador.y + jogador.altura - el.y) < 8) {
+          jogador.y = el.y - jogador.altura;
+          jogador.vy = 0;
+          jogador.onGround = true;
+        }
+      }
+    }
+
+    // ===== Travas (Tela 4) =====
+    function atualizarTravas(_dt: number) {
+      for (const trava of travas) {
+        if (trava.removida) {
+          trava.animacao = Math.min(1, trava.animacao + _dt * 2);
+          continue;
+        }
+        if (Math.abs(jogador.x - trava.x) < 14 && Math.abs(jogador.y + jogador.altura - trava.y) < 16) {
+          trava.removida = true;
+          ctx.hud.adicionarPontos(PONTOS_INTERROMPER, trava.x, trava.y - 10, '#FCA5A5');
+          ctx.audio.tocar('alvo');
+          for (let i = 0; i < 6; i++) {
+            particulas.push({
+              x: trava.x, y: trava.y,
+              vx: (Math.random() - 0.5) * 90, vy: -Math.random() * 80,
+              cor: '#EF4444', tamanho: 2, vida: 0.5,
+            });
+          }
+          if (travas.every((t) => t.removida)) {
+            tremor = 1;
+            ctx.audio.tocar('explosaoNave');
+          }
+        }
+      }
+    }
+
+    // ===== Martelos e itens =====
+    function atualizarItens(_dt: number) {
+      for (const h of martelos) {
+        if (h.coletado) continue;
+        if (Math.abs(jogador.x - h.x) < 15 && Math.abs(jogador.y + jogador.altura - h.y) < 16) {
+          h.coletado = true;
+          jogador.marteloTimer = MARTELO_DURACAO;
+          ctx.audio.tocar('item');
+          ctx.hud.adicionarPontos(300, h.x, h.y - 10, '#FBBF24');
+        }
+      }
+      for (const item of itensBonus) {
+        if (item.coletado) continue;
+        if (Math.abs(jogador.x - item.x) < 15 && Math.abs(jogador.y + jogador.altura - item.y) < 16) {
+          item.coletado = true;
+          const pontos = PONTOS_ITEM_BONUS[item.tipo];
+          ctx.hud.adicionarPontos(pontos, item.x, item.y - 10, '#FDE047');
+          ctx.audio.tocar('moeda');
+        }
+      }
+      // Vida extra em 7.000 pontos
+      const pontuacao = ctx.hud.obterEstado().pontuacao;
+      if (!vidasExtraGanho && pontuacao >= PONTOS_VIDA_EXTRA_1) {
+        vidasExtraGanho = true;
+        vidas = ctx.hud.ganharVida();
+        ctx.audio.tocar('item');
+      }
+    }
+
+    function contextoParticulas(x: number, y: number, cor: string) {
+      for (let i = 0; i < 10; i++) {
+        particulas.push({
+          x, y,
+          vx: (Math.random() - 0.5) * 140, vy: (Math.random() - 0.5) * 140 - 40,
+          cor, tamanho: 2 + Math.random() * 2, vida: 0.6,
+        });
+      }
+    }
+
+    function atualizarParticulas(dt: number) {
+      for (const p of particulas) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 300 * dt;
+        p.vida -= dt;
+      }
+      particulas = particulas.filter((p) => p.vida > 0);
+    }
+
+    // ===== Esteira do topo inverte aleatoriamente (Tela 2) =====
+    let esteiraTopoTimer = 0;
+    function atualizarEsteiraTopo(dt: number) {
+      if (telaIndice !== 1) return;
+      const topo = estrutura.girders[1];
+      if (!topo?.esteira) return;
+
+      const atual = topo.sentidoEsteira ?? 1;
+      esteiraTopoTimer += dt;
+      if (esteiraTopoTimer > 6) {
+        esteiraTopoTimer = 0;
+        topo.sentidoEsteira = atual === 1 ? -1 : 1;
+        ctx.audio.tocar('propulsor');
+      }
+    }
+
+    // ===== Renderização =====
+    function desenhar(g: CanvasRenderingContext2D) {
+      g.save();
+      if (tremor > 0) {
+        g.translate((Math.random() - 0.5) * 8 * tremor, (Math.random() - 0.5) * 8 * tremor);
+      }
+
+      // Fundo: cenário da construção
+      const grad = g.createLinearGradient(0, 0, 0, ALTURA);
+      grad.addColorStop(0, '#1C2A44');
+      grad.addColorStop(0.6, '#3B4A6B');
+      grad.addColorStop(1, '#54432F');
+      g.fillStyle = grad;
+      g.fillRect(0, 0, LARGURA, ALTURA);
+
+      // Vigas
+      for (const vigia of estrutura.girders) desenharVigia(g, vigia);
+
+      // Esteiras da Tela 2 com setas animadas
+      if (telaIndice === 1) {
+        for (const vigia of estrutura.girders) {
+          if (!vigia.esteira) continue;
+          const dir = vigia.sentidoEsteira ?? 1;
+          const t = (performance.now() / 300) % 24;
+          g.fillStyle = 'rgba(250,204,21,0.75)';
+          for (let x = vigia.x - 24 + t; x < vigia.x2; x += 24) {
+            const y = vigia.yEm(Math.max(vigia.x, Math.min(vigia.x2, x))) - 8;
+            g.beginPath();
+            if (dir > 0) {
+              g.moveTo(x, y - 3);
+              g.lineTo(x + 6, y);
+              g.lineTo(x, y + 3);
+            } else {
+              g.moveTo(x + 6, y - 3);
+              g.lineTo(x, y);
+              g.lineTo(x + 6, y + 3);
+            }
+            g.closePath();
+            g.fill();
+          }
+        }
+      }
+
+      // Escadas
+      for (const escada of estrutura.escadas) desenharEscada(g, escada);
+
+      // Elevadores (Tela 3)
+      for (const el of elevadores) {
+        g.fillStyle = '#A16207';
+        g.fillRect(el.x - 24, el.y - 4, 48, 6);
+        g.fillStyle = '#FDE68A';
+        g.fillRect(el.x - 24, el.y - 6, 48, 2);
+        g.strokeStyle = '#78716C';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(el.x, 44);
+        g.lineTo(el.x, el.y);
+        g.stroke();
+      }
+
+      // Barril de óleo (Tela 1) decorativo
+      if (estrutura.def.barrilOleo) {
+        desenharBarril(g, estrutura.def.barrilOleo.x, estrutura.def.barrilOleo.y, 0, true);
+      }
+
+      // Travas (Tela 4)
+      for (const trava of travas) {
+        if (trava.removida && trava.animacao >= 1) continue;
+        const escala = trava.removida ? 1 - trava.animacao : 1;
+        g.save();
+        g.translate(trava.x, trava.y);
+        g.scale(escala, escala);
+        desenharTrava(g, 0, 0);
+        g.restore();
+      }
+
+      // Martelos e itens de bônus
+      for (const h of martelos) {
+        if (h.coletado) continue;
+        desenharMartelo(g, h.x, h.y, performance.now() / 300);
+      }
+      for (const item of itensBonus) {
+        if (item.coletado) continue;
+        const frame = performance.now() / 200;
+        if (item.tipo === 'chapeu') desenharChapeu(g, item.x, item.y, frame);
+        else if (item.tipo === 'bolsa') desenharBolsa(g, item.x, item.y, frame);
+        else desenharGuardaChuva(g, item.x, item.y, frame);
+      }
+
+      // Barris
+      for (const b of barris) {
+        desenharBarril(g, b.x, b.y, b.rotacao, b.azul);
+      }
+
+      // Bolas de fogo
+      for (const fb of bolasFogo) {
+        desenharBolaFogo(g, fb.x, fb.y, performance.now() / 90);
+      }
+
+      // Caixas de massa
+      for (const c of caixas) {
+        desenharCaixaMassa(g, c.x, c.y);
+      }
+
+      // Molas
+      for (const m of molas) {
+        desenharMola(g, m.x, m.y, performance.now() / 90);
+      }
+
+      // Partículas
+      for (const p of particulas) {
+        g.globalAlpha = Math.max(0, p.vida);
+        g.fillStyle = p.cor;
+        g.fillRect(Math.floor(p.x - p.tamanho / 2), Math.floor(p.y - p.tamanho / 2), p.tamanho, p.tamanho);
+      }
+      g.globalAlpha = 1;
+
+      // Hannah (noiva aguardando)
+      if (estado !== 'CENA') {
+        desenharHannah(g, hannah.x, hannah.y + 24, performance.now() / 400, true);
+        // Grotão
+        desenharGrotao(g, grotao.x, grotao.y + 24, 1, grotao.frame, false);
+      }
+
+      // Jogador
+      if (!jogador.morrendo || Math.floor(jogador.morteTimer * 8) % 2 === 0) {
+        if (jogador.invencivelTimer > 0 && Math.floor(jogador.invencivelTimer * 10) % 2 === 0) {
+          // piscando: pula o desenho
+        } else {
+          desenharZeca(g, jogador.x + jogador.largura / 2, jogador.y + jogador.altura, jogador.facing, jogador.walkFrame, jogador.marteloTimer > 0);
+          // Martelo sobre a cabeça enquanto ativo
+          if (jogador.marteloTimer > 0) {
+            desenharMartelo(g, jogador.x + jogador.largura / 2 + 8, jogador.y - 4, performance.now() / 150);
+            if (jogador.marteloTimer <= 2.5 && Math.floor(jogador.marteloTimer * 6) % 2 === 0) {
+              g.fillStyle = '#FBBF24';
+              g.fillRect(jogador.x + jogador.largura / 2 - 6, jogador.y - 14, 12, 2);
+            }
+          }
+        }
+      }
+
+      // HUD
+      ctx.hud.desenharHUD(g, LARGURA, ALTURA);
+
+      // Altura e ciclo (abaixo de FASE, no canto esquerdo)
+      g.fillStyle = '#22D3EE';
+      g.font = '8px "Press Start 2P", monospace';
+      g.textAlign = 'left';
+      g.fillText(`${estrutura.def.alturaMetros}m`, 18, 62);
+      g.fillText(`CICLO ${ciclo}`, 18, 76);
+
+      g.restore();
+    }
+
+    function desenharVigia(g: CanvasRenderingContext2D, vigia: Segmento) {
+      const dx = vigia.x2 - vigia.x;
+      const dy = vigia.y2 - vigia.y;
+      const len = Math.hypot(dx, dy);
+      const angle = Math.atan2(dy, dx);
+
+      g.save();
+      g.translate(vigia.x, vigia.y);
+      g.rotate(angle);
+
+      g.fillStyle = '#C2410C';
+      g.fillRect(0, 0, len, 3);
+      g.fillRect(0, vigia.altura - 3, len, 3);
+
+      const segmentWidth = 14;
+      const count = Math.floor(len / segmentWidth);
+      g.strokeStyle = '#7C2D12';
+      g.lineWidth = 1.5;
+      g.beginPath();
+      for (let i = 0; i < count; i++) {
+        const x1 = i * segmentWidth;
+        const x2 = (i + 1) * segmentWidth;
+        g.moveTo(x1, 2);
+        g.lineTo(x2, vigia.altura - 2);
+        g.moveTo(x2, 2);
+        g.lineTo(x1, vigia.altura - 2);
+      }
+      g.stroke();
+
+      g.fillStyle = '#22D3EE';
+      for (let i = 0; i <= count; i++) {
+        const rx = i * segmentWidth;
+        g.fillRect(rx, 1, 2, 2);
+        g.fillRect(rx, vigia.altura - 3, 2, 2);
+      }
+
+      g.restore();
+    }
+
+    function desenharEscada(g: CanvasRenderingContext2D, escada: { x: number; yTop: number; yBottom: number; quebrada: boolean }) {
+      const largura = 16;
+      const metade = largura / 2;
+      g.fillStyle = '#22D3EE';
+
+      if (!escada.quebrada) {
+        g.fillRect(escada.x - metade, escada.yTop, 2, escada.yBottom - escada.yTop);
+        g.fillRect(escada.x + metade - 2, escada.yTop, 2, escada.yBottom - escada.yTop);
+        for (let y = escada.yTop + 4; y < escada.yBottom; y += 6) {
+          g.fillRect(escada.x - metade, y, largura, 2);
+        }
+      } else {
+        const gap = (escada.yTop + escada.yBottom) / 2;
+        const gapTamanho = 18;
+        // Parte de cima
+        g.fillRect(escada.x - metade, escada.yTop, 2, gap - gapTamanho / 2 - escada.yTop);
+        g.fillRect(escada.x + metade - 2, escada.yTop, 2, gap - gapTamanho / 2 - escada.yTop);
+        for (let y = escada.yTop + 4; y < gap - gapTamanho / 2; y += 6) {
+          g.fillRect(escada.x - metade, y, largura, 2);
+        }
+        // Pontas quebradas vermelhas
+        g.fillStyle = '#EF4444';
+        g.fillRect(escada.x - metade, gap - gapTamanho / 2, 4, 3);
+        g.fillRect(escada.x + metade - 4, gap + gapTamanho / 2 - 3, 4, 3);
+        // Parte de baixo
+        g.fillStyle = '#22D3EE';
+        g.fillRect(escada.x - metade, gap + gapTamanho / 2, 2, escada.yBottom - (gap + gapTamanho / 2));
+        g.fillRect(escada.x + metade - 2, gap + gapTamanho / 2, 2, escada.yBottom - (gap + gapTamanho / 2));
+        for (let y = gap + gapTamanho / 2 + 4; y < escada.yBottom; y += 6) {
+          g.fillRect(escada.x - metade, y, largura, 2);
+        }
+      }
+    }
+
+    // ===== GameInstance =====
+    let tempoGlobal = 0;
 
     return {
       iniciar() {
-        ctx.hud.definirEstado({
-          pontuacao: 0,
-          recorde: ctx.storage.lerRecorde(ctx.id),
-          vidas: 3,
-          fase: 1,
-          bonus: 5000,
-        });
-        estado = 'TITLE';
+        iniciarPartida();
       },
 
       reiniciar() {
-        initLevel(1, false);
+        iniciarPartida();
       },
 
-      pausar() {
-        // Pausado
-      },
+      pausar() {},
+      retomar() {},
 
-      retomar() {
-        // Retomado
+      destruir() {
+        barris = [];
+        bolasFogo = [];
+        caixas = [];
+        molas = [];
+        travas = [];
+        martelos = [];
+        itensBonus = [];
+        particulas = [];
       },
 
       atualizar(dt: number, input: InputState) {
-        if (flashScreenTimer > 0) {
-          flashScreenTimer -= dt;
-        }
+        const dtSeguro = Math.min(dt, 0.05);
+        tempoGlobal += dtSeguro;
 
         if (estado === 'TITLE') {
           if (input.acaoPressionada || input.cimaPressionada) {
-            initLevel(1, false);
+            iniciarPartida();
           }
           return;
         }
 
-        if (estado === 'VICTORY') {
-          if (input.acaoPressionada) {
-            initLevel(fase + 1, true);
+        if (estado === 'CENA' && cena) {
+          if (cena.atualizar(dtSeguro, input.acaoPressionada)) {
+            const depois = cenaApos;
+            cena = null;
+            cenaApos = null;
+            depois?.();
           }
           return;
         }
 
         if (estado === 'GAMEOVER') {
-          if (input.acaoPressionada) {
-            initLevel(1, false);
-          }
+          if (input.acaoPressionada) iniciarPartida();
           return;
         }
 
-        // Atualização do bônus de tempo
-        if (bonusTimer > 0) {
-          bonusTimer = Math.max(0, bonusTimer - dt * 50);
-          ctx.hud.definirBonus(bonusTimer);
-          if (bonusTimer <= 0) {
-            handlePlayerDeath();
-          }
-        }
-
-        // Morte do Zeca
-        if (player.isDying) {
-          player.deathTimer -= dt;
-          if (player.deathTimer <= 0) {
-            if (vidas <= 0) {
-              estado = 'GAMEOVER';
-              ctx.finalizarJogo('gameOver');
-            } else {
-              player.x = 80;
-              player.y = 520;
-              player.vx = 0;
-              player.vy = 0;
-              player.isDying = false;
-              player.onGround = true;
-              player.isClimbing = false;
-              player.invincibleTimer = 2.0;
-            }
-          }
-          return;
-        }
-
-        if (player.invincibleTimer > 0) {
-          player.invincibleTimer -= dt;
-        }
-
-        // Marreta
-        if (player.isHammerActive) {
-          player.hammerTimer -= dt;
-          player.hammerSwingFrame += dt * 8;
-          if (Math.floor(player.hammerSwingFrame) % 4 === 0) {
-            ctx.audio.tocar('marreta');
-          }
-          if (player.hammerTimer <= 0) {
-            player.isHammerActive = false;
-          }
-        }
-
-        // Checar escadas
-        let nearLadder: Ladder | null = null;
-        for (const lad of ladders) {
-          if (Math.abs(player.x - lad.x) < 14 && player.y >= lad.yTop - 6 && player.y <= lad.yBottom + 6) {
-            nearLadder = lad;
-            break;
-          }
-        }
-
-        if (nearLadder && !player.isHammerActive) {
-          if (input.cima && player.y > nearLadder.yTop) {
-            if (!nearLadder.broken || !nearLadder.brokenGapY || player.y > nearLadder.brokenGapY + 14 || player.y < nearLadder.brokenGapY - 14) {
-              player.isClimbing = true;
-              player.currentLadder = nearLadder;
-              player.x = nearLadder.x;
-            }
-          } else if (input.baixo && player.y < nearLadder.yBottom) {
-            if (!nearLadder.broken || !nearLadder.brokenGapY || player.y > nearLadder.brokenGapY + 14 || player.y < nearLadder.brokenGapY - 14) {
-              player.isClimbing = true;
-              player.currentLadder = nearLadder;
-              player.x = nearLadder.x;
-            }
-          }
-        } else {
-          player.isClimbing = false;
-          player.currentLadder = null;
-        }
-
-        // Subir / descer escada
-        if (player.isClimbing && player.currentLadder) {
-          player.vx = 0;
-          player.vy = 0;
-          const climbSpeed = 75;
-
-          if (input.cima) {
-            if (!(player.currentLadder.broken && player.currentLadder.brokenGapY && Math.abs(player.y - player.currentLadder.brokenGapY) < 10)) {
-              player.y -= climbSpeed * dt;
-              player.walkTimer += dt;
-              if (player.walkTimer > 0.15) {
-                player.walkTimer = 0;
-                player.walkFrame = (player.walkFrame + 1) % 2;
-                ctx.audio.tocar('passo');
-              }
-            }
-          } else if (input.baixo) {
-            if (!(player.currentLadder.broken && player.currentLadder.brokenGapY && Math.abs(player.y - player.currentLadder.brokenGapY) < 10)) {
-              player.y += climbSpeed * dt;
-              player.walkTimer += dt;
-              if (player.walkTimer > 0.15) {
-                player.walkTimer = 0;
-                player.walkFrame = (player.walkFrame + 1) % 2;
-                ctx.audio.tocar('passo');
-              }
-            }
-          }
-
-          if (player.y <= player.currentLadder.yTop) {
-            player.y = player.currentLadder.yTop;
-            player.isClimbing = false;
-            player.onGround = true;
-          } else if (player.y >= player.currentLadder.yBottom) {
-            player.y = player.currentLadder.yBottom;
-            player.isClimbing = false;
-            player.onGround = true;
-          }
-
-          if (input.esquerda || input.direita) {
-            const support = findGirderBelow(girders, player.x, player.y, 8);
-            if (support) {
-              player.isClimbing = false;
-              player.onGround = true;
-            }
-          }
-        } else {
-          // Movimentação horizontal normal
-          const moveSpeed = player.isHammerActive ? 85 : 100;
-          if (input.esquerda) {
-            player.vx = -moveSpeed;
-            player.facing = -1;
-          } else if (input.direita) {
-            player.vx = moveSpeed;
-            player.facing = 1;
-          } else {
-            player.vx = 0;
-          }
-
-          // Pulo
-          if (input.acaoPressionada && player.onGround && !player.isHammerActive) {
-            player.vy = -200;
-            player.onGround = false;
-            ctx.audio.tocar('pulo');
-          }
-
-          if (!player.onGround) {
-            player.vy += 450 * dt;
-          }
-
-          player.x += player.vx * dt;
-          player.y += player.vy * dt;
-
-          if (player.onGround && Math.abs(player.vx) > 0) {
-            player.walkTimer += dt;
-            if (player.walkTimer > 0.12) {
-              player.walkTimer = 0;
-              player.walkFrame = (player.walkFrame + 1) % 3;
-              ctx.audio.tocar('passo');
-            }
-          }
-
-          if (player.x < 30) player.x = 30;
-          if (player.x > 450) player.x = 450;
-
-          const support = findGirderBelow(girders, player.x, player.y, 10);
-          if (support && player.vy >= 0) {
-            if (player.y >= support.surfaceY - 4) {
-              if (player.vy > 380) {
-                handlePlayerDeath();
-                return;
-              }
-              player.y = support.surfaceY;
-              player.vy = 0;
-              player.onGround = true;
-            }
-          } else if (player.onGround) {
-            const closeSupport = findGirderBelow(girders, player.x, player.y + 4, 8);
-            if (closeSupport) {
-              player.y = closeSupport.surfaceY;
-            } else {
-              player.onGround = false;
-            }
-          }
-
-          if (player.y > ctx.altura + 30) {
-            handlePlayerDeath();
-            return;
-          }
-        }
-
-        // Vitória ao alcançar Hannah
-        const gTopoVitoria = girders.find((g) => g.id === 0)!;
-        const topoMinX = Math.min(gTopoVitoria.xStart, gTopoVitoria.xEnd);
-        const topoMaxX = Math.max(gTopoVitoria.xStart, gTopoVitoria.xEnd);
-        if (player.y <= gTopoVitoria.yStart + 12 && player.x >= topoMinX - 8 && player.x <= topoMaxX + 8) {
-          handleVictory();
-          return;
-        }
-
-        // Itens: Marretas
-        for (const h of hammerItems) {
-          if (!h.collected && Math.abs(player.x - h.x) < 18 && Math.abs(player.y - h.y) < 20) {
-            h.collected = true;
-            player.isHammerActive = true;
-            player.hammerTimer = 8.0;
-            ctx.audio.tocar('item');
-            spawnParticles(h.x, h.y, PALETTE.hammerSteel, 12, 3);
-            ctx.hud.adicionarPontos(300, h.x, h.y - 10, '#38BDF8');
-          }
-        }
-
-        // Itens Bônus da Hannah
-        for (const item of bonusItems) {
-          if (!item.collected && Math.abs(player.x - item.x) < 18 && Math.abs(player.y - item.y) < 18) {
-            item.collected = true;
-            ctx.audio.tocar('moeda');
-            spawnParticles(item.x, item.y, PALETTE.flameYellow, 12, 2.5);
-            ctx.hud.adicionarPontos(item.points, item.x, item.y - 12, '#FDE047');
-          }
-        }
-
-        // Grotão e lançamento de barris
-        grotao.actionTimer += dt;
-        grotao.barrelSpawnTimer -= dt;
-
-        if (grotao.barrelSpawnTimer <= 0 && !grotao.isDefeated) {
-          grotao.action = 'throwBarrel';
-          grotao.barrelSpawnTimer = Math.max(1.8, 3.8 - fase * 0.35 + Math.random() * 0.8);
-          grotao.actionTimer = 0;
-
-          const isSpecial = Math.random() < 0.25 + fase * 0.05;
-          const gGrotaoBarrel = girders.find((g) => g.id === 1)!;
-          const spawnX = gGrotaoBarrel.xEnd - 45;
-          barrels.push({
-            id: nextBarrelId++,
-            x: spawnX,
-            y: (getGirderYAt(gGrotaoBarrel, spawnX) ?? 125) - 9,
-            vx: 80 + fase * 10,
-            vy: 0,
-            radius: 9,
-            rotation: 0,
-            isSpecial,
-            onLadder: false,
-            jumpScored: false,
-            currentGirderId: 1,
-          });
-          ctx.audio.tocar('barril');
-        } else if (grotao.action === 'throwBarrel' && grotao.actionTimer > 0.8) {
-          grotao.action = Math.random() > 0.5 ? 'beatChest' : 'idle';
-          grotao.actionTimer = 0;
-          if (grotao.action === 'beatChest') {
-            ctx.audio.tocar('passo');
-          }
-        }
-
-        // Atualização dos Barris com física estável e descida precisa
-        const activeBarrels: Barrel[] = [];
-        const baseBarrelSpeed = 75 + fase * 12;
-
-        for (const b of barrels) {
-          b.rotation += (b.vx / b.radius) * dt;
-
-          if (b.onLadder) {
-            const prevY = b.y;
-            b.y += 115 * dt;
-
-            const landing = checkBarrelGirderLanding(girders, prevY, b.y, b.x, b.radius);
-            if (landing) {
-              b.y = landing.surfaceY - b.radius;
-              b.vy = 0;
-              b.onLadder = false;
-              b.currentGirderId = landing.girder.id;
-              b.vx = landing.girder.rollDirection * (b.isSpecial ? baseBarrelSpeed * 1.35 : baseBarrelSpeed);
-              ctx.audio.tocar('barril');
-              spawnParticles(b.x, b.y + b.radius, PALETTE.redGirderDark, 4, 1.2);
-            }
-            activeBarrels.push(b);
-            continue;
-          }
-
-          if (b.currentGirderId !== null) {
-            const girder = girders.find((g) => g.id === b.currentGirderId);
-            if (girder) {
-              const dir = girder.rollDirection;
-              const speed = b.isSpecial ? baseBarrelSpeed * 1.35 : baseBarrelSpeed;
-              b.vx = dir * speed;
-
-              if (b.isSpecial && Math.abs(b.y - player.y) < 25 && Math.random() < 0.015) {
-                b.vx = (player.x < b.x ? -1 : 1) * speed;
-              }
-
-              b.x += b.vx * dt;
-              const surfaceY = getGirderYAt(girder, b.x);
-
-              if (surfaceY !== null) {
-                b.y = surfaceY - b.radius;
-                b.vy = 0;
-
-                // Chance de descer por uma escada (inclusive as quebradas)
-                for (const lad of ladders) {
-                  if (Math.abs(b.x - lad.x) < 7 && Math.abs(b.y + b.radius - lad.yTop) < 14) {
-                    if (Math.random() < 0.2 + fase * 0.04) {
-                      b.onLadder = true;
-                      b.currentGirderId = null;
-                      b.x = lad.x;
-                      b.vx = 0;
-                      break;
-                    }
-                  }
-                }
-              } else {
-                b.currentGirderId = null;
-                b.vy = 60;
-                b.vx = b.vx * 0.45;
-              }
-            }
-          } else {
-            const prevY = b.y;
-            b.vy += 450 * dt;
-            b.y += b.vy * dt;
-            b.x += b.vx * dt;
-
-            const landing = checkBarrelGirderLanding(girders, prevY, b.y, b.x, b.radius);
-            if (landing) {
-              b.y = landing.surfaceY - b.radius;
-              b.vy = 0;
-              b.currentGirderId = landing.girder.id;
-              const newDir = landing.girder.rollDirection;
-              b.vx = newDir * (b.isSpecial ? baseBarrelSpeed * 1.35 : baseBarrelSpeed);
-              ctx.audio.tocar('barril');
-              spawnParticles(b.x, b.y + b.radius, PALETTE.redGirderDark, 5, 1.5);
-            }
-          }
-
-          if (b.x < 25) {
-            b.x = 25;
-            b.vx = Math.abs(b.vx);
-          } else if (b.x > 455) {
-            b.x = 455;
-            b.vx = -Math.abs(b.vx);
-          }
-
-          if (b.y >= 505 && b.x <= 75) {
-            spawnParticles(50, 495, PALETTE.flameYellow, 8, 2);
-            spawnParticles(50, 495, PALETTE.flameRed, 6, 2.5);
-            continue;
-          }
-
-          if (b.y > ctx.altura + 20) {
-            continue;
-          }
-
-          // Colisões com Zeca
-          const dx = player.x - b.x;
-          const dy = player.y - b.y;
-          const dist = Math.hypot(dx, dy);
-
-          // Esmagar barril com a marreta (+300 pts)
-          if (player.isHammerActive) {
-            const hammerHitBox = {
-              minX: player.facing === 1 ? player.x - 5 : player.x - 26,
-              maxX: player.facing === 1 ? player.x + 26 : player.x + 5,
-              minY: player.y - 24,
-              maxY: player.y + 10,
-            };
-
-            if (
-              b.x >= hammerHitBox.minX &&
-              b.x <= hammerHitBox.maxX &&
-              b.y >= hammerHitBox.minY &&
-              b.y <= hammerHitBox.maxY
-            ) {
-              ctx.audio.tocar('explosao');
-              spawnParticles(b.x, b.y, b.isSpecial ? PALETTE.barrelOrange : PALETTE.woodBrown, 14, 3.5);
-              ctx.hud.adicionarPontos(300, b.x, b.y - 12, '#38BDF8');
-              continue;
-            }
-          }
-
-          // Pular barril (+100 pts)
-          if (!player.onGround && !b.jumpScored) {
-            if (Math.abs(dx) < 22 && dy < -10 && dy > -45) {
-              b.jumpScored = true;
-              ctx.audio.tocar('moeda');
-              ctx.hud.adicionarPontos(100, player.x, player.y - 20, PALETTE.textYellow);
-              spawnParticles(player.x, player.y, PALETTE.rivetCyan, 5, 1.5);
-            }
-          }
-
-          // Colisão fatal
-          if (dist < b.radius + 10 && !player.isHammerActive && player.invincibleTimer <= 0) {
-            handlePlayerDeath();
-            return;
-          }
-
-          activeBarrels.push(b);
-        }
-        barrels = activeBarrels;
-
-        // Fogo e chamas espirituosas
-        fireballSpawnTimer -= dt;
-        if (fireballSpawnTimer <= 0 && fireballs.length < 2 + Math.floor(fase / 2)) {
-          fireballSpawnTimer = Math.max(5.0, 10.0 - fase * 1.0 + Math.random() * 2.0);
-          fireballs.push({
-            id: nextFireballId++,
-            x: 60,
-            y: (getGirderYAt(girders.find((g) => g.id === 6)!, 60) ?? 520) - 4,
-            vx: 45 + fase * 6,
-            vy: 0,
-            onLadder: false,
-            facing: 1,
-            climbCooldown: 2.0,
-            changeDirCooldown: 3.0,
-          });
-          spawnParticles(60, 490, PALETTE.flameYellow, 10, 2);
-        }
-
-        const activeFireballs: Fireball[] = [];
-        for (const fb of fireballs) {
-          fb.climbCooldown -= dt;
-          fb.changeDirCooldown -= dt;
-
-          if (fb.onLadder) {
-            fb.y -= 50 * dt;
-            const support = findGirderBelow(girders, fb.x, fb.y, 6);
-            if (support && fb.y <= support.surfaceY) {
-              fb.y = support.surfaceY;
-              fb.onLadder = false;
-              fb.climbCooldown = 4.0;
-            }
-            activeFireballs.push(fb);
-            continue;
-          }
-
-          const support = findGirderBelow(girders, fb.x, fb.y, 8);
-          if (support) {
-            fb.y = support.surfaceY;
-            if (fb.changeDirCooldown <= 0) {
-              fb.changeDirCooldown = 2.0 + Math.random() * 3.0;
-              if (Math.random() < 0.6) {
-                fb.facing = player.x > fb.x ? 1 : -1;
-                fb.vx = Math.abs(fb.vx) * fb.facing;
-              }
-            }
-
-            if (fb.climbCooldown <= 0) {
-              for (const lad of ladders) {
-                if (!lad.broken && Math.abs(fb.x - lad.x) < 10 && Math.abs(fb.y - lad.yBottom) < 8) {
-                  if (Math.random() < 0.4) {
-                    fb.onLadder = true;
-                    fb.x = lad.x;
-                    fb.vx = 0;
-                    break;
-                  }
-                }
-              }
-            }
-          }
-
-          fb.x += fb.vx * dt;
-          if (fb.x < 30) {
-            fb.x = 30;
-            fb.vx = Math.abs(fb.vx);
-            fb.facing = 1;
-          } else if (fb.x > 450) {
-            fb.x = 450;
-            fb.vx = -Math.abs(fb.vx);
-            fb.facing = -1;
-          }
-
-          const distToZeca = Math.hypot(player.x - fb.x, player.y - fb.y);
-          if (distToZeca < 16) {
-            if (player.isHammerActive) {
-              ctx.audio.tocar('explosao');
-              spawnParticles(fb.x, fb.y, PALETTE.flameYellow, 16, 3);
-              ctx.hud.adicionarPontos(300, fb.x, fb.y - 10, '#F59E0B');
-              continue;
-            } else if (player.invincibleTimer <= 0) {
-              handlePlayerDeath();
-              return;
-            }
-          }
-
-          activeFireballs.push(fb);
-        }
-        fireballs = activeFireballs;
-
-        // Partículas (velocidade normalizada para 60 atualizações/segundo)
-        const fator60 = dt * 60;
-        particles = particles.filter((pt) => {
-          pt.x += pt.vx * fator60;
-          pt.y += pt.vy * fator60;
-          pt.vy += 0.15 * fator60;
-          pt.life -= dt;
-          return pt.life > 0;
-        });
-
-        // Corações de Hannah
-        hannah.speechTimer += dt;
-        hannah.heartTimer += dt;
-        if (hannah.heartTimer > 2.5 && !grotao.isDefeated) {
-          hannah.heartTimer = 0;
-          hannah.hearts.push({
-            x: hannah.x + (Math.random() * 16 - 8),
-            y: hannah.y - 12,
-            vy: -20,
-            life: 1.5,
-          });
-        }
-
-        hannah.hearts = hannah.hearts.filter((h) => {
-          h.y += h.vy * dt;
-          h.life -= dt;
-          return h.life > 0;
-        });
+        atualizarJogando(dtSeguro, input);
       },
 
       desenhar(g: CanvasRenderingContext2D) {
-        // Flash de vitória
-        if (flashScreenTimer > 0) {
-          g.fillStyle = '#FFFFFF';
-          g.fillRect(0, 0, ctx.largura, ctx.altura);
+        if (estado === 'TITLE') {
+          // Tela de título
+          const grad = g.createLinearGradient(0, 0, 0, ALTURA);
+          grad.addColorStop(0, '#0F172A');
+          grad.addColorStop(1, '#1E293B');
+          g.fillStyle = grad;
+          g.fillRect(0, 0, LARGURA, ALTURA);
+
+          desenharEstruturaSilhuetaFake(g);
+
+          g.fillStyle = '#FDE68A';
+          g.font = '18px "Press Start 2P", monospace';
+          g.textAlign = 'center';
+          g.fillText('SALVE A', LARGURA / 2, 150);
+          g.fillStyle = '#14B8A6';
+          g.fillText('HANNAH', LARGURA / 2, 178);
+
+          g.fillStyle = '#F8FAFC';
+          g.font = '7px "Press Start 2P", monospace';
+          g.fillText('RESGATE-A DO GROTÃO', LARGURA / 2, 216);
+
+          const pisca = Math.floor(tempoGlobal * 2) % 2 === 0;
+          if (pisca) {
+            g.fillStyle = '#FBBF24';
+            g.fillText('PRESSIONE AÇÃO', LARGURA / 2, 300);
+          }
+
+          g.fillStyle = '#94A3B8';
+          g.font = '6px "Press Start 2P", monospace';
+          g.fillText('SETAS: MOVER · ESPAÇO: PULAR', LARGURA / 2, 400);
+          g.fillText('RECORDE: ' + Math.floor(ctx.storage.lerRecorde(ctx.id)), LARGURA / 2, 430);
           return;
         }
 
-        g.fillStyle = PALETTE.black;
-        g.fillRect(0, 0, ctx.largura, ctx.altura);
-
-        // 1. Vigas de aço
-        for (const girder of girders) {
-          const dx = girder.xEnd - girder.xStart;
-          const dy = girder.yEnd - girder.yStart;
-          const len = Math.hypot(dx, dy);
-          const angle = Math.atan2(dy, dx);
-
-          g.save();
-          g.translate(girder.xStart, girder.yStart);
-          g.rotate(angle);
-
-          g.fillStyle = PALETTE.redGirder;
-          g.fillRect(0, 0, len, 3);
-          g.fillRect(0, girder.height - 3, len, 3);
-
-          const segmentWidth = 14;
-          const count = Math.floor(len / segmentWidth);
-
-          g.strokeStyle = PALETTE.redGirderDark;
-          g.lineWidth = 1.5;
-          g.beginPath();
-          for (let i = 0; i < count; i++) {
-            const x1 = i * segmentWidth;
-            const x2 = (i + 1) * segmentWidth;
-            g.moveTo(x1, 2);
-            g.lineTo(x2, girder.height - 2);
-            g.moveTo(x2, 2);
-            g.lineTo(x1, girder.height - 2);
-          }
-          g.stroke();
-
-          g.fillStyle = PALETTE.rivetCyan;
-          for (let i = 0; i <= count; i++) {
-            const rx = i * segmentWidth;
-            g.fillRect(rx, 1, 2, 2);
-            g.fillRect(rx, girder.height - 3, 2, 2);
-          }
-
-          g.restore();
+        if (estado === 'CENA' && cena) {
+          cena.desenhar(g, LARGURA, ALTURA);
+          return;
         }
 
-        // 2. Escadas
-        for (const lad of ladders) {
-          const width = 16;
-          const halfW = width / 2;
-          g.fillStyle = PALETTE.ladderCyan;
+        desenhar(g);
 
-          if (!lad.broken) {
-            g.fillRect(lad.x - halfW, lad.yTop, 2, lad.yBottom - lad.yTop);
-            g.fillRect(lad.x + halfW - 2, lad.yTop, 2, lad.yBottom - lad.yTop);
-            for (let y = lad.yTop + 4; y < lad.yBottom; y += 6) {
-              g.fillRect(lad.x - halfW, y, width, 2);
-            }
-          } else {
-            const gapY = lad.brokenGapY || (lad.yTop + lad.yBottom) / 2;
-            const gapSize = 22;
-
-            g.fillRect(lad.x - halfW, lad.yTop, 2, gapY - gapSize / 2 - lad.yTop);
-            g.fillRect(lad.x + halfW - 2, lad.yTop, 2, gapY - gapSize / 2 - lad.yTop);
-            for (let y = lad.yTop + 4; y < gapY - gapSize / 2; y += 6) {
-              g.fillRect(lad.x - halfW, y, width, 2);
-            }
-
-            g.fillStyle = PALETTE.redGirderDark;
-            g.fillRect(lad.x - halfW, gapY - gapSize / 2, 4, 3);
-            g.fillRect(lad.x + halfW - 4, gapY + gapSize / 2 - 3, 4, 3);
-
-            g.fillStyle = PALETTE.ladderCyan;
-            g.fillRect(lad.x - halfW, gapY + gapSize / 2, 2, lad.yBottom - (gapY + gapSize / 2));
-            g.fillRect(lad.x + halfW - 2, gapY + gapSize / 2, 2, lad.yBottom - (gapY + gapSize / 2));
-            for (let y = gapY + gapSize / 2 + 4; y < lad.yBottom; y += 6) {
-              g.fillRect(lad.x - halfW, y, width, 2);
-            }
-          }
+        if (estado === 'GAMEOVER') {
+          ctx.hud.desenharGameOver(g, LARGURA, ALTURA, 'PRESSIONE AÇÃO');
         }
-
-        // 3. Barril de fogo no térreo
-        const ox = 50;
-        const oy = 490;
-        g.fillStyle = PALETTE.oilBlue;
-        g.fillRect(ox - 14, oy, 28, 30);
-        g.fillStyle = '#60A5FA';
-        g.fillRect(ox - 14, oy + 4, 28, 2);
-        g.fillRect(ox - 14, oy + 15, 28, 2);
-        g.fillRect(ox - 14, oy + 25, 28, 2);
-        g.fillStyle = PALETTE.white;
-        g.font = '6px "Press Start 2P", monospace';
-        g.textAlign = 'center';
-        g.fillText('FOGO', ox, oy + 21);
-
-        const flameTime = performance.now() / 150;
-        const flameHeight = 12 + Math.sin(flameTime) * 4;
-        g.fillStyle = PALETTE.flameYellow;
-        g.beginPath();
-        g.moveTo(ox - 12, oy);
-        g.lineTo(ox - 6, oy - flameHeight);
-        g.lineTo(ox, oy - 4);
-        g.lineTo(ox + 6, oy - flameHeight - 3);
-        g.lineTo(ox + 12, oy);
-        g.fill();
-
-        g.fillStyle = PALETTE.flameRed;
-        g.beginPath();
-        g.moveTo(ox - 8, oy);
-        g.lineTo(ox - 2, oy - flameHeight * 0.7);
-        g.lineTo(ox + 3, oy - flameHeight * 0.8);
-        g.lineTo(ox + 8, oy);
-        g.fill();
-
-        // 4. Marretas
-        for (const h of hammerItems) {
-          if (h.collected) continue;
-          g.save();
-          g.translate(h.x, h.y);
-          g.fillStyle = PALETTE.hammerWood;
-          g.fillRect(-2, -10, 4, 16);
-          g.fillStyle = PALETTE.hammerSteel;
-          g.fillRect(-8, -16, 16, 8);
-          g.fillStyle = PALETTE.white;
-          g.fillRect(-6, -15, 12, 2);
-          g.restore();
-        }
-
-        // 5. Itens da Hannah
-        for (const it of bonusItems) {
-          if (it.collected) continue;
-          g.save();
-          g.translate(it.x, it.y);
-          if (it.type === 'chapeu') {
-            g.fillStyle = PALETTE.hannahPink;
-            g.fillRect(-8, 0, 16, 3);
-            g.fillRect(-5, -6, 10, 6);
-            g.fillStyle = PALETTE.flameYellow;
-            g.fillRect(-5, -2, 10, 2);
-          } else if (it.type === 'bolsa') {
-            g.strokeStyle = PALETTE.hammerWood;
-            g.lineWidth = 1.5;
-            g.strokeRect(-5, -8, 10, 6);
-            g.fillStyle = PALETTE.flameYellow;
-            g.fillRect(-6, -2, 12, 8);
-            g.fillStyle = PALETTE.woodDark;
-            g.fillRect(-2, 0, 4, 2);
-          } else if (it.type === 'guarda-chuva') {
-            g.fillStyle = PALETTE.rivetCyan;
-            g.beginPath();
-            g.arc(0, -2, 8, Math.PI, 0);
-            g.fill();
-            g.fillStyle = PALETTE.hammerWood;
-            g.fillRect(-1, -2, 2, 10);
-            g.fillRect(-4, 7, 4, 2);
-          }
-          g.restore();
-        }
-
-        // 6. Grotão
-        g.save();
-        g.translate(grotao.x, grotao.y);
-        const gTime = performance.now() / 200;
-        const isBeating = grotao.action === 'beatChest';
-        const isThrowing = grotao.action === 'throwBarrel';
-
-        // Pilha de barris
-        g.fillStyle = PALETTE.woodBrown;
-        g.fillRect(-38, 20, 16, 24);
-        g.fillRect(-20, 20, 16, 24);
-        g.fillRect(-29, -2, 16, 24);
-        g.fillStyle = PALETTE.black;
-        g.fillRect(-38, 26, 16, 2);
-        g.fillRect(-38, 36, 16, 2);
-        g.fillRect(-20, 26, 16, 2);
-        g.fillRect(-20, 36, 16, 2);
-        g.fillRect(-29, 4, 16, 2);
-        g.fillRect(-29, 14, 16, 2);
-
-        // Corpo
-        g.fillStyle = PALETTE.grotaoFur;
-        g.fillRect(-16, 0, 32, 38);
-        g.fillStyle = PALETTE.grotaoSkin;
-        g.fillRect(-10, 8, 20, 24);
-        g.fillStyle = PALETTE.grotaoFurDark;
-        g.fillRect(-1, 8, 2, 24);
-
-        // Cabeça
-        g.fillStyle = PALETTE.grotaoFur;
-        g.fillRect(-12, -18, 24, 18);
-        g.fillRect(-16, -14, 4, 6);
-        g.fillRect(12, -14, 4, 6);
-        g.fillStyle = PALETTE.grotaoSkin;
-        g.fillRect(-8, -12, 16, 12);
-
-        if (grotao.isDefeated) {
-          g.fillStyle = PALETTE.white;
-          g.fillRect(-6, -10, 4, 4);
-          g.fillRect(2, -10, 4, 4);
-          g.fillStyle = PALETTE.flameRed;
-          g.fillRect(-5, -9, 2, 2);
-          g.fillRect(3, -9, 2, 2);
-          g.fillStyle = PALETTE.black;
-          g.fillRect(-4, -4, 8, 6);
-        } else {
-          g.fillStyle = PALETTE.white;
-          g.fillRect(-6, -11, 4, 4);
-          g.fillRect(2, -11, 4, 4);
-          g.fillStyle = PALETTE.black;
-          g.fillRect(-4, -10, 2, 2);
-          g.fillRect(2, -10, 2, 2);
-          g.fillStyle = PALETTE.white;
-          g.fillRect(-6, -3, 3, 4);
-          g.fillRect(3, -3, 3, 4);
-          g.fillStyle = PALETTE.black;
-          g.fillRect(-3, -2, 6, 2);
-        }
-
-        // Braços
-        g.fillStyle = PALETTE.grotaoFur;
-        if (isBeating) {
-          const beatLeft = Math.floor(gTime) % 2 === 0;
-          if (beatLeft) {
-            g.fillRect(-8, 6, 8, 10);
-            g.fillRect(14, -2, 10, 22);
-          } else {
-            g.fillRect(-24, -2, 10, 22);
-            g.fillRect(0, 6, 8, 10);
-          }
-        } else if (isThrowing) {
-          g.fillRect(-22, -16, 10, 20);
-          g.fillRect(12, -16, 10, 20);
-          g.fillStyle = PALETTE.woodBrown;
-          g.fillRect(-10, -28, 20, 16);
-          g.fillStyle = PALETTE.black;
-          g.fillRect(-10, -24, 20, 2);
-          g.fillRect(-10, -18, 20, 2);
-        } else {
-          g.fillRect(-24, 8, 10, 28);
-          g.fillRect(14, 8, 10, 28);
-          g.fillStyle = PALETTE.grotaoSkin;
-          g.fillRect(-24, 32, 10, 6);
-          g.fillRect(14, 32, 10, 6);
-        }
-
-        g.fillStyle = PALETTE.grotaoFurDark;
-        g.fillRect(-14, 36, 10, 8);
-        g.fillRect(4, 36, 10, 8);
-        g.restore();
-
-        // 7. Hannah
-        g.save();
-        g.translate(hannah.x, hannah.y);
-        const hTime = performance.now() / 250;
-        const waveArm = Math.sin(hTime) > 0;
-
-        g.fillStyle = PALETTE.hannahHair;
-        g.fillRect(-8, -16, 16, 10);
-        g.fillRect(-10, -12, 4, 12);
-        g.fillRect(6, -12, 4, 12);
-
-        g.fillStyle = PALETTE.zecaSkin;
-        g.fillRect(-6, -12, 12, 10);
-        g.fillStyle = PALETTE.oilBlue;
-        g.fillRect(-4, -10, 2, 2);
-        g.fillRect(2, -10, 2, 2);
-        g.fillStyle = PALETTE.flameRed;
-        g.fillRect(-2, -6, 4, 2);
-
-        g.fillStyle = PALETTE.hannahPink;
-        g.fillRect(-6, -2, 12, 16);
-        g.fillRect(-9, 10, 18, 6);
-
-        g.fillStyle = PALETTE.white;
-        g.fillRect(-4, 0, 8, 10);
-
-        g.fillStyle = PALETTE.zecaSkin;
-        if (waveArm) {
-          g.fillRect(-12, -10, 4, 12);
-          g.fillRect(8, -4, 4, 12);
-        } else {
-          g.fillRect(-12, -4, 4, 12);
-          g.fillRect(8, -10, 4, 12);
-        }
-
-        g.fillStyle = PALETTE.black;
-        g.fillRect(-6, 16, 4, 3);
-        g.fillRect(2, 16, 4, 3);
-
-        if (Math.sin(hTime * 0.8) > -0.3) {
-          g.fillStyle = PALETTE.white;
-          g.fillRect(16, -26, 68, 16);
-          g.beginPath();
-          g.moveTo(16, -14);
-          g.lineTo(8, -10);
-          g.lineTo(18, -10);
-          g.fill();
-
-          g.fillStyle = PALETTE.flameRed;
-          g.font = '7px "Press Start 2P", monospace';
-          g.textAlign = 'center';
-          g.fillText('SOCORRO!', 50, -15);
-        }
-
-        for (const heart of hannah.hearts) {
-          g.fillStyle = PALETTE.hannahPink;
-          g.fillRect(heart.x - hannah.x - 4, heart.y - hannah.y - 4, 4, 4);
-          g.fillRect(heart.x - hannah.x, heart.y - hannah.y - 4, 4, 4);
-          g.fillRect(heart.x - hannah.x - 4, heart.y - hannah.y, 8, 4);
-          g.fillRect(heart.x - hannah.x - 2, heart.y - hannah.y + 4, 4, 2);
-        }
-        g.restore();
-
-        // 8. Barris
-        for (const b of barrels) {
-          g.save();
-          g.translate(b.x, b.y);
-          g.rotate(b.rotation);
-
-          const r = b.radius;
-          const isOrange = b.isSpecial;
-
-          g.fillStyle = isOrange ? PALETTE.barrelOrange : PALETTE.woodBrown;
-          g.beginPath();
-          g.arc(0, 0, r, 0, Math.PI * 2);
-          g.fill();
-
-          g.strokeStyle = PALETTE.black;
-          g.lineWidth = 1.5;
-          g.beginPath();
-          g.arc(0, 0, r, 0, Math.PI * 2);
-          g.stroke();
-
-          g.beginPath();
-          g.moveTo(-r, 0);
-          g.lineTo(r, 0);
-          g.moveTo(0, -r);
-          g.lineTo(0, r);
-          g.stroke();
-
-          g.fillStyle = isOrange ? PALETTE.flameYellow : PALETTE.woodDark;
-          g.beginPath();
-          g.arc(0, 0, r * 0.45, 0, Math.PI * 2);
-          g.fill();
-
-          if (isOrange) {
-            g.fillStyle = PALETTE.white;
-            g.fillRect(-2, -2, 4, 4);
-          }
-          g.restore();
-        }
-
-        // 9. Chamas
-        const fireTime = performance.now() / 120;
-        for (const fb of fireballs) {
-          g.save();
-          g.translate(fb.x, fb.y);
-          const flicker = Math.sin(fireTime + fb.id) * 3;
-
-          g.fillStyle = PALETTE.flameRed;
-          g.beginPath();
-          g.arc(0, 0, 8, 0, Math.PI * 2);
-          g.fill();
-          g.fillRect(-6, -10 + flicker, 12, 6);
-
-          g.fillStyle = PALETTE.flameYellow;
-          g.beginPath();
-          g.arc(0, 0, 5, 0, Math.PI * 2);
-          g.fill();
-          g.fillRect(-4, -8 + flicker, 8, 5);
-
-          g.fillStyle = PALETTE.white;
-          g.fillRect(-2, -3, 4, 4);
-
-          g.fillStyle = PALETTE.black;
-          g.fillRect(fb.facing === 1 ? 0 : -3, -2, 2, 2);
-          g.restore();
-        }
-
-        // 10. Zeca (Herói)
-        g.save();
-        g.translate(player.x, player.y);
-
-        if (!(player.invincibleTimer > 0 && Math.floor(player.invincibleTimer * 10) % 2 === 0)) {
-          if (player.isDying) {
-            g.rotate(Math.PI / 2);
-            g.fillStyle = PALETTE.zecaOveralls;
-            g.fillRect(-10, -12, 20, 16);
-            g.fillStyle = PALETTE.zecaSkin;
-            g.fillRect(-8, -20, 16, 10);
-            g.fillStyle = PALETTE.zecaShirt;
-            g.fillRect(-10, -24, 20, 6);
-
-            g.fillStyle = PALETTE.flameYellow;
-            const t = performance.now() / 100;
-            g.fillRect(-18 + Math.cos(t) * 12, -26 + Math.sin(t) * 12, 4, 4);
-            g.fillRect(-18 + Math.cos(t + 2) * 12, -26 + Math.sin(t + 2) * 12, 4, 4);
-          } else {
-            g.scale(player.facing, 1);
-
-            if (player.isHammerActive) {
-              const isUp = Math.floor(player.hammerSwingFrame) % 2 === 0;
-              g.fillStyle = PALETTE.zecaOveralls;
-              g.fillRect(-7, -10, 14, 16);
-              g.fillStyle = PALETTE.zecaShirt;
-              g.fillRect(-8, -16, 16, 8);
-              g.fillStyle = PALETTE.zecaSkin;
-              g.fillRect(-6, -22, 12, 8);
-              g.fillRect(4, -20, 4, 4);
-              g.fillStyle = PALETTE.zecaShirt;
-              g.fillRect(-7, -26, 15, 6);
-              g.fillRect(0, -22, 10, 3);
-              g.fillStyle = PALETTE.zecaShoes;
-              g.fillRect(-8, 6, 6, 4);
-              g.fillRect(2, 6, 6, 4);
-
-              g.save();
-              if (isUp) {
-                g.fillStyle = PALETTE.hammerWood;
-                g.fillRect(-2, -38, 4, 18);
-                g.fillStyle = PALETTE.hammerSteel;
-                g.fillRect(-12, -48, 24, 12);
-                g.fillStyle = PALETTE.white;
-                g.fillRect(-10, -46, 20, 3);
-              } else {
-                g.fillStyle = PALETTE.hammerWood;
-                g.fillRect(4, -8, 18, 4);
-                g.fillStyle = PALETTE.hammerSteel;
-                g.fillRect(20, -14, 14, 22);
-                g.fillStyle = PALETTE.white;
-                g.fillRect(22, -12, 10, 4);
-                g.fillStyle = PALETTE.flameYellow;
-                g.fillRect(24, 6, 8, 3);
-              }
-              g.restore();
-            } else if (player.isClimbing) {
-              const alt = player.walkFrame % 2 === 0;
-              g.fillStyle = PALETTE.zecaOveralls;
-              g.fillRect(-7, -12, 14, 18);
-              g.fillStyle = PALETTE.flameYellow;
-              g.fillRect(-5, -12, 2, 8);
-              g.fillRect(3, -12, 2, 8);
-              g.fillStyle = PALETTE.zecaShirt;
-              g.fillRect(-6, -22, 12, 8);
-
-              g.fillStyle = PALETTE.zecaSkin;
-              if (alt) {
-                g.fillRect(-11, -20, 4, 8);
-                g.fillRect(7, -12, 4, 8);
-              } else {
-                g.fillRect(-11, -12, 4, 8);
-                g.fillRect(7, -20, 4, 8);
-              }
-
-              g.fillStyle = PALETTE.zecaShoes;
-              g.fillRect(alt ? -8 : -5, 6, 5, 4);
-              g.fillRect(alt ? 0 : 3, 6, 5, 4);
-            } else {
-              g.fillStyle = PALETTE.zecaShirt;
-              g.fillRect(-6, -24, 12, 6);
-              g.fillRect(0, -21, 9, 3);
-
-              g.fillStyle = PALETTE.zecaSkin;
-              g.fillRect(-6, -18, 12, 8);
-              g.fillRect(4, -16, 4, 4);
-              g.fillStyle = PALETTE.black;
-              g.fillRect(2, -17, 2, 2);
-              g.fillStyle = PALETTE.grotaoFurDark;
-              g.fillRect(1, -13, 7, 3);
-
-              g.fillStyle = PALETTE.zecaShirt;
-              g.fillRect(-7, -12, 14, 8);
-
-              g.fillStyle = PALETTE.zecaOveralls;
-              g.fillRect(-6, -8, 12, 14);
-              g.fillRect(-4, -12, 3, 6);
-              g.fillStyle = PALETTE.flameYellow;
-              g.fillRect(-3, -7, 2, 2);
-
-              g.fillStyle = PALETTE.zecaSkin;
-              if (!player.onGround) {
-                g.fillRect(-10, -18, 4, 8);
-                g.fillRect(6, -18, 4, 8);
-              } else if (Math.abs(player.vx) > 0) {
-                const swing = player.walkFrame === 1 ? -4 : 4;
-                g.fillRect(swing, -10, 4, 8);
-              } else {
-                g.fillRect(-2, -8, 4, 8);
-              }
-
-              g.fillStyle = PALETTE.zecaShoes;
-              if (!player.onGround) {
-                g.fillRect(-8, 2, 6, 4);
-                g.fillRect(2, 0, 6, 4);
-              } else if (Math.abs(player.vx) > 0) {
-                if (player.walkFrame === 0) {
-                  g.fillRect(-7, 6, 5, 4);
-                  g.fillRect(2, 6, 5, 4);
-                } else if (player.walkFrame === 1) {
-                  g.fillRect(-10, 4, 5, 5);
-                  g.fillRect(4, 6, 5, 4);
-                } else {
-                  g.fillRect(-5, 6, 5, 4);
-                  g.fillRect(5, 4, 5, 5);
-                }
-              } else {
-                g.fillRect(-7, 6, 6, 4);
-                g.fillRect(2, 6, 6, 4);
-              }
-            }
-          }
-        }
-        g.restore();
-
-        // 11. Partículas
-        for (const pt of particles) {
-          g.fillStyle = pt.color;
-          g.fillRect(pt.x, pt.y, pt.size, pt.size);
-        }
-
-        // 12. HUD Padrão do motor compartilhado
-        ctx.hud.desenharHUD(g, ctx.largura, ctx.altura);
-
-        // 13. Telas especiais
-        if (estado === 'TITLE') {
-          g.save();
-          g.fillStyle = 'rgba(0, 0, 0, 0.78)';
-          g.fillRect(0, 0, ctx.largura, ctx.altura);
-
-          const time = performance.now() / 400;
-          g.textAlign = 'center';
-          g.font = '22px "Press Start 2P", monospace';
-          g.fillStyle = PALETTE.redGirderDark;
-          g.fillText('SALVE A HANNAH', ctx.largura / 2 + 3, 173);
-          g.fillStyle = PALETTE.flameYellow;
-          g.fillText('SALVE A HANNAH', ctx.largura / 2, 170);
-
-          g.font = '8px "Press Start 2P", monospace';
-          g.fillStyle = PALETTE.rivetCyan;
-          g.fillText('ARCADE CLÁSSICO DOS ANOS 80', ctx.largura / 2, 200);
-
-          g.fillStyle = PALETTE.white;
-          g.font = '8px "Press Start 2P", monospace';
-          g.fillText('TABELA DE PONTOS', ctx.largura / 2, 255);
-
-          g.textAlign = 'left';
-          const startX = 105;
-          g.fillStyle = PALETTE.woodBrown;
-          g.fillRect(startX, 275, 12, 10);
-          g.fillStyle = PALETTE.white;
-          g.fillText('PULAR BARRIL   = 100 PTS', startX + 22, 284);
-
-          g.fillStyle = PALETTE.hammerSteel;
-          g.fillRect(startX, 300, 12, 10);
-          g.fillStyle = PALETTE.white;
-          g.fillText('MARRETA SMASH  = 300 PTS', startX + 22, 309);
-
-          g.fillStyle = PALETTE.hannahPink;
-          g.fillRect(startX, 325, 12, 10);
-          g.fillStyle = PALETTE.white;
-          g.fillText('ITENS DA HANNAH= 500 PTS', startX + 22, 334);
-
-          if (Math.sin(time * 3) > 0) {
-            g.textAlign = 'center';
-            g.fillStyle = PALETTE.flameYellow;
-            g.font = '10px "Press Start 2P", monospace';
-            g.fillText('PRESSIONE PULAR OU', ctx.largura / 2, 400);
-            g.fillText('TOQUE PARA INICIAR', ctx.largura / 2, 418);
-          }
-
-          g.textAlign = 'center';
-          g.font = '7px "Press Start 2P", monospace';
-          g.fillStyle = '#94A3B8';
-          g.fillText('SETAS: MOVER · ESPAÇO: PULAR · P: PAUSA · R: RESET', ctx.largura / 2, 475);
-          g.restore();
-        } else if (estado === 'VICTORY') {
-          ctx.hud.desenharVitoria(g, ctx.largura, ctx.altura, 'HANNAH SALVA!', Math.floor(bonusTimer));
-        } else if (estado === 'GAMEOVER') {
-          ctx.hud.desenharGameOver(g, ctx.largura, ctx.altura, 'PRESSIONE PULAR / TOQUE');
-        }
-      },
-
-      destruir() {
-        barrels = [];
-        fireballs = [];
-        particles = [];
-        hammerItems = [];
-        bonusItems = [];
       },
     };
   },
 };
+
+function desenharEstruturaSilhuetaFake(g: CanvasRenderingContext2D) {
+  g.strokeStyle = '#334155';
+  g.lineWidth = 4;
+  for (let i = 0; i < 6; i++) {
+    const y = 330 + i * 26;
+    g.beginPath();
+    g.moveTo(80 - i * 8, y);
+    g.lineTo(400 + i * 8, y);
+    g.stroke();
+  }
+}
