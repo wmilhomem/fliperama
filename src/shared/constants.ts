@@ -8,6 +8,13 @@ import { PlatformConfig } from './types';
 export const PLATFORM_NAME = 'FLIPERAMA';
 export const PLATFORM_TAGLINE = 'Plataforma de Jogos Arcade Retrô';
 
+/**
+ * Chave de segurança do piloto de controles por gestos ("arrastar").
+ * Com `false`, qualquer jogo com `controleTouch` volta a usar o controle
+ * clássico (D-pad + botões) e nada do piloto atua.
+ */
+export const NOVA_ENTRADA_TOUCH = true;
+
 export const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
   volume: 0.7,
   somAtivo: true,

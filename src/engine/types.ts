@@ -29,11 +29,27 @@ export interface InputState {
   reiniciarPressionado: boolean; // Tecla R
   voltarPressionado: boolean; // Tecla ESC
   mudoPressionado: boolean; // Tecla M
+
+  /**
+   * Deslocamento horizontal acumulado desde a última leitura (pixels lógicos).
+   * Só é alimentado por jogos com `controleTouch` no esquema "arrastar".
+   * Zera ao ser lido. Retrocompatível: jogos que não leem ignoram.
+   */
+  arrasteDX: number;
+  /** Verdadeiro enquanto houver um dedo na faixa de arrasto. */
+  arrastando: boolean;
 }
 
 /**
  * Presets de áudio sintetizados via Web Audio API.
  */
+/** Eventos táteis do piloto por gestos (Invasores Cósmicos 84). */
+export type HapticEvento = 'tiro' | 'acerto' | 'explosao' | 'dano' | 'vida' | 'fim';
+
+export interface HapticsService {
+  tocar(evento: HapticEvento): void;
+}
+
 export type AudioPreset =
   | 'pulo'
   | 'moeda'
@@ -173,6 +189,8 @@ export interface EngineContext {
   hud: HUDService;
   colisao: CollisionUtils;
   sprites: SpriteUtils;
+  /** Vibração tátil (no-op se a API não existir ou estiver desligada). */
+  haptics: HapticsService;
   finalizarJogo(motivo: 'vitoria' | 'gameOver'): void;
   solicitarPausa(): void;
   solicitarReinicio(): void;
@@ -228,5 +246,15 @@ export interface GameModule {
   teclasExtras?: Record<string, keyof InputState>;
   /** Toque direto na tela do canvas (opcional). */
   toqueTela?: ConfiguracaoToqueTela;
+  /**
+   * Piloto de controles por gestos (MODO "arrastar": arrastar na faixa move
+   * e ATIRAR dispara). Jogos sem o campo usam o controle clássico intacto.
+   */
+  controleTouch?: {
+    /** Esquema padrão do jogo. */
+    padrao: 'arrastar' | 'classico';
+    /** Esquemas oferecidos no seletor do jogo. */
+    esquemas: Array<'arrastar' | 'classico'>;
+  };
   criar(ctx: EngineContext): GameInstance;
 }

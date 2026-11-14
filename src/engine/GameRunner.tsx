@@ -17,6 +17,9 @@ import {
   ArrowLeft as ArrowLeftIcon,
   ArrowRight as ArrowRightIcon,
   Gamepad2,
+  Crosshair,
+  MoveHorizontal,
+  Hand,
 } from 'lucide-react';
 import { GameModule, GameInstance, EngineContext, InputState } from './types';
 import { UnifiedInputManager } from './input';
@@ -28,6 +31,18 @@ import { collision } from './collision';
 import { sprites } from './sprites';
 import { PlatformConfig } from '../shared/types';
 import { lerJogador } from '../shared/player';
+import { NOVA_ENTRADA_TOUCH } from '../shared/constants';
+import {
+  EsquemaTouch,
+  aoMudarEsquema,
+  aoPedirDicaDeToque,
+  esquemaDoJogo,
+  lerControles,
+  salvarControles,
+  salvarEsquema,
+} from '../shared/controles';
+import { GestureInputManager } from './gestures';
+import { RetroHapticsService } from './haptics';
 
 interface GameRunnerProps {
   modulo: GameModule;
@@ -75,12 +90,90 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
     setDispositivoTouch(isTouch);
   }, []);
 
+  // Piloto de controles por gestos ("arrastar") — só para jogos com controleTouch
+  const gestureRef = useRef<GestureInputManager>(new GestureInputManager());
+  const hapticsRef = useRef(new RetroHapticsService());
+  const faixaRef = useRef<HTMLDivElement | null>(null);
+  const botaoAtirarRef = useRef<HTMLButtonElement | null>(null);
+  const [esquemaTouch, setEsquemaTouch] = useState<EsquemaTouch>(() =>
+    modulo.controleTouch
+      ? esquemaDoJogo(modulo.id, modulo.controleTouch.padrao)
+      : 'classico'
+  );
+  const [mostrarDica, setMostrarDica] = useState(false);
+  const [faixaToqueX, setFaixaToqueX] = useState<number | null>(null);
+  const [diagInfo, setDiagInfo] = useState(() => gestureRef.current.lerDiagnostico());
+
+  const temControleTouch = Boolean(modulo.controleTouch) && NOVA_ENTRADA_TOUCH;
+  const exibirArrastar =
+    temControleTouch &&
+    esquemaTouch === 'arrastar' &&
+    (config.controlesTouch === 'sempre' || (config.controlesTouch === 'auto' && dispositivoTouch));
+  const controlesDoJogo = lerControles();
+  const canhotoAtivo = controlesDoJogo.canhoto;
+  const modoTiroAtivo = controlesDoJogo.modoTiro;
+  const diagnosticoAtivo = controlesDoJogo.diagnostico && temControleTouch;
+
   // Atualizar áudio caso config mude
   useEffect(() => {
     audioRef.current.definirMudo(!config.somAtivo);
     audioRef.current.definirVolume(config.volume);
     setSomLigado(config.somAtivo);
   }, [config.somAtivo, config.volume]);
+
+  // Alternar o esquema de toque ao vivo (botão na barra, "?" ou Configurações)
+  useEffect(() => {
+    return aoMudarEsquema(() => {
+      if (modulo.controleTouch) {
+        setEsquemaTouch(esquemaDoJogo(modulo.id, modulo.controleTouch.padrao));
+      }
+      gestureRef.current.liberarTudo();
+      inputManagerRef.current.limpar();
+    });
+  }, [modulo.id, modulo.controleTouch]);
+
+  // Reabrir a dica de 3 segundos (botão "?" do jogo)
+  useEffect(() => {
+    return aoPedirDicaDeToque(() => {
+      if (temControleTouch && exibirArrastar) setMostrarDica(true);
+    });
+  }, [temControleTouch, exibirArrastar]);
+
+  // Registrar/desregistrar a faixa e o botão ATIRAR quando o esquema muda
+  useEffect(() => {
+    const g = gestureRef.current;
+    g.definirLarguraLogica(modulo.largura);
+    if (exibirArrastar) {
+      g.registrarFaixa(faixaRef.current);
+      g.registrarBotao(botaoAtirarRef.current);
+    } else {
+      g.liberarTudo();
+      g.registrarFaixa(null);
+      g.registrarBotao(null);
+    }
+  }, [exibirArrastar, modulo]);
+
+  // Dica de primeiro uso: uma vez por aparelho, apenas para quem tem controleTouch
+  useEffect(() => {
+    if (!exibirArrastar) return;
+    if (lerControles().dicaVista) return;
+    setMostrarDica(true);
+    salvarControles({ dicaVista: true });
+  }, [exibirArrastar]);
+
+  // Auto-esconder a dica após 3 segundos
+  useEffect(() => {
+    if (!mostrarDica) return;
+    const id = window.setTimeout(() => setMostrarDica(false), 3000);
+    return () => window.clearTimeout(id);
+  }, [mostrarDica]);
+
+  // Painel de diagnóstico (5 Hz) enquanto estiver ligado
+  useEffect(() => {
+    if (!diagnosticoAtivo) return;
+    const id = window.setInterval(() => setDiagInfo(gestureRef.current.lerDiagnostico()), 200);
+    return () => window.clearInterval(id);
+  }, [diagnosticoAtivo]);
 
   // Ciclo de vida do jogo
   useEffect(() => {
@@ -117,6 +210,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
       hud: hudRef.current,
       colisao: collision,
       sprites: sprites,
+      haptics: hapticsRef.current,
       finalizarJogo: (motivo) => {
         if (motivo === 'gameOver') {
           audioRef.current.tocar('gameOver');
@@ -152,7 +246,15 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
     // Criar e iniciar o Game Loop
     const loop = new RetroGameLoop({
       atualizar: (dt: number) => {
-        const inputState: InputState = input.obterEstado();
+        const base = input.obterEstado();
+        const frame = gestureRef.current.lerFrame();
+        const inputState: InputState = {
+          ...base,
+          acao: base.acao || frame.acao,
+          acaoPressionada: base.acaoPressionada || frame.acaoPressionada,
+          arrasteDX: frame.arrasteDX,
+          arrastando: frame.arrastando,
+        };
 
         // Atalhos de sistema universais (P pausa, R reset, M som, ESC hub)
         if (inputState.voltarPressionado) {
@@ -194,6 +296,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
       },
       aoMudarVisibilidade: (visivel: boolean) => {
         setEstaPausado(!visivel);
+        gestureRef.current.liberarTudo();
         if (!visivel) {
           jogo.pausar();
         } else {
@@ -210,6 +313,8 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
       loop.parar();
       jogo.destruir();
       input.parar();
+      inputManagerRef.current.limpar();
+      gestureRef.current.destruir();
       gameInstanceRef.current = null;
       gameLoopRef.current = null;
     };
@@ -247,6 +352,12 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
   const alternarMudoLocal = () => {
     audioRef.current.ativar();
     onAlternarSomRef.current();
+  };
+
+  const alternarEsquemaTouch = () => {
+    if (!modulo.controleTouch) return;
+    const novo: EsquemaTouch = esquemaTouch === 'arrastar' ? 'classico' : 'arrastar';
+    salvarEsquema(modulo.id, novo);
   };
 
   // Handlers para botões touch virtuais
@@ -310,10 +421,36 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
     config.controlesTouch === 'sempre' ||
     (config.controlesTouch === 'auto' && dispositivoTouch);
 
+  // Piloto "arrastar": posição da alça neon sob o dedo (relativa à faixa)
+  const atualizarFaixaToque = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = faixaRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setFaixaToqueX(Math.max(0, Math.min(rect.width, e.clientX - rect.left)));
+  };
+
+  const limparFaixaToque = () => setFaixaToqueX(null);
+
+  const botaoAtirar = (
+    <button
+      ref={botaoAtirarRef}
+      type="button"
+      aria-label="Atirar"
+      className="flex flex-col items-center justify-center shrink-0 w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-full bg-red-600 active:bg-red-500 active:scale-95 border-2 border-red-400 shadow-[0_5px_0_#7f1d1d] active:shadow-none transition-all touch-none select-none"
+      style={{ WebkitTouchCallout: 'none', overscrollBehavior: 'none' }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <Crosshair className="w-6 h-6 text-white" />
+      <span className="text-[8px] font-bold text-white mt-0.5 tracking-widest">ATIRAR</span>
+    </button>
+  );
+
   return (
     <div
       ref={containerRef}
-      className="relative flex flex-col items-center justify-between w-full h-full min-h-[92vh] select-none p-2 md:p-4 text-white font-arcade"
+      className={`relative flex flex-col items-center justify-between w-full h-full min-h-[92vh] select-none p-2 md:p-4 text-white font-arcade ${
+        exibirArrastar ? 'overscroll-none' : ''
+      }`}
       onClick={() => audioRef.current.ativar()}
     >
       {/* BARRA SUPERIOR DO FLIPERAMA */}
@@ -376,6 +513,22 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
             )}
           </button>
 
+          {/* Alternar controle de toque (Arrastar / Botões na tela) — só em aparelhos de toque */}
+          {temControleTouch && dispositivoTouch && (
+            <button
+              onClick={alternarEsquemaTouch}
+              title="Alternar: Arrastar (novo) / Botões na tela (reserva)"
+              aria-label="Alternar esquema de controle de toque"
+              className={`p-1.5 rounded transition-colors ${
+                esquemaTouch === 'arrastar'
+                  ? 'bg-cyan-600/30 text-cyan-300 border border-cyan-500/60'
+                  : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <MoveHorizontal className="w-3.5 h-3.5" />
+            </button>
+          )}
+
           {/* Ajuda / Controles */}
           <button
             onClick={onAbrirAjuda}
@@ -386,6 +539,23 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
           </button>
         </div>
       </header>
+
+      {/* DICA DE PRIMEIRO USO (piloto "arrastar") */}
+      {mostrarDica && exibirArrastar && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 pointer-events-none bg-black/40">
+          <div className="flex items-center gap-6 bg-slate-950/80 border border-cyan-500/60 rounded-2xl px-8 py-5 shadow-[0_0_35px_rgba(34,211,238,0.3)]">
+            <Hand className="w-12 h-12 text-cyan-300 dica-arrastar" />
+            <MoveHorizontal className="w-8 h-8 text-slate-300" />
+            <div className="flex flex-col items-center">
+              <Crosshair className="w-10 h-10 text-red-400 dica-atirar" />
+              <span className="text-[7px] text-red-300 mt-1 tracking-widest">ATIRAR</span>
+            </div>
+          </div>
+          <p className="text-[11px] text-white bg-black/75 border border-cyan-500/50 rounded-lg px-4 py-2 tracking-wide">
+            Arraste para mover. Toque em Atirar.
+          </p>
+        </div>
+      )}
 
       {/* ÁREA CENTRAL DO GABINETE & CANVAS COM ESCALA NÍTIDA */}
       <main className="relative flex flex-col items-center justify-center w-full max-w-3xl flex-1 min-h-0">
@@ -406,6 +576,29 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
             onPointerCancel={modulo.toqueTela ? handlePointerUpTela : undefined}
             className="pixelated w-auto max-w-full max-h-[64vh] sm:max-h-[72vh] md:max-h-[78vh] lg:max-h-[82vh] bg-black rounded shadow-2xl cursor-pointer"
           />
+
+          {/* DIAGNÓSTICO DE TOQUE (Configurações > Avançado) */}
+          {diagnosticoAtivo && exibirArrastar && (
+            <div className="absolute top-1 left-1 z-30 pointer-events-none rounded-md border border-cyan-500/70 bg-black/85 p-1.5 text-[7px] font-mono text-cyan-200 leading-tight">
+              <div className="font-bold text-cyan-300">DIAGN · {diagInfo.ponteiros.length} ponteiro(s)</div>
+              {diagInfo.ponteiros.map((p) => (
+                <div key={p.id}>
+                  #{p.id} {p.zona === 'faixa' ? 'faixa' : 'botão'} x{p.x} y{p.y}
+                </div>
+              ))}
+              <div>
+                arrasteDX {diagInfo.arrasteDX.toFixed(1)}
+                {diagInfo.arrastando ? ' (arrastando)' : ''}
+              </div>
+              <div>ATIRAR: {diagInfo.atirarHeld ? 'pressionado' : '—'}</div>
+              <div>
+                tiro: {diagInfo.modoTiro} · sens {diagInfo.sensibilidade}x
+              </div>
+              <div>
+                latência ~{diagInfo.latenciaMs}ms · descartes {diagInfo.descartadas}
+              </div>
+            </div>
+          )}
 
           {/* MODAL DE CONFIRMAÇÃO DE RESET */}
           {mostrarConfirmacaoReset && (
@@ -447,8 +640,46 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
         )}
       </main>
 
+      {/* CONTROLES POR GESTOS — piloto "arrastar" (Invasores Cósmicos 84) */}
+      {exibirArrastar && (
+        <footer className="w-full max-w-3xl flex items-center gap-4 mt-2 px-6 py-2 z-20">
+          {canhotoAtivo && botaoAtirar}
+
+          {/* Faixa de arrasto */}
+          <div
+            ref={faixaRef}
+            role="slider"
+            aria-label="Faixa de arrasto: arraste para mover"
+            className="relative flex-1 h-14 rounded-full bg-slate-900/90 border border-slate-700 shadow-inner touch-none select-none"
+            style={{ WebkitTouchCallout: 'none', overscrollBehavior: 'none' }}
+            onContextMenu={(e) => e.preventDefault()}
+            onPointerDown={atualizarFaixaToque}
+            onPointerMove={(e) => {
+              if (e.buttons) atualizarFaixaToque(e);
+            }}
+            onPointerUp={limparFaixaToque}
+            onPointerCancel={limparFaixaToque}
+            onPointerLeave={limparFaixaToque}
+          >
+            {/* Trilho */}
+            <div className="absolute left-5 right-5 top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-slate-700/80" />
+            <MoveHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 pointer-events-none" />
+            <MoveHorizontal className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 pointer-events-none" />
+            {/* Alça neon sob o dedo */}
+            {faixaToqueX !== null && (
+              <div
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-10 h-10 rounded-full border-2 border-cyan-300 bg-cyan-400/25 shadow-[0_0_16px_rgba(34,211,238,0.8)]"
+                style={{ left: faixaToqueX }}
+              />
+            )}
+          </div>
+
+          {!canhotoAtivo && botaoAtirar}
+        </footer>
+      )}
+
       {/* CONTROLES TOUCH VIRTUAIS RESPONSIVOS PARA CELULAR */}
-      {exibirTouch && (
+      {exibirTouch && !exibirArrastar && (
         <footer className="w-full max-w-xl grid grid-cols-2 gap-4 mt-2 px-3 py-2 z-20">
           {/* D-PAD VIRTUAL */}
           <div className="flex items-center justify-center">

@@ -4,10 +4,18 @@
  */
 
 import React, { useState } from 'react';
-import { Settings, Volume2, Smartphone, Trash2, ArrowLeft, Check, AlertTriangle, UserRound } from 'lucide-react';
+import { Settings, Volume2, Smartphone, Trash2, ArrowLeft, Check, AlertTriangle, UserRound, Vibrate, Gauge, Wrench, Hand, Zap } from 'lucide-react';
 import { PlatformConfig } from '../shared/types';
 import { RetroStorageService } from '../engine/storage';
 import { lerJogador, limparJogador } from '../shared/player';
+import {
+  lerControles,
+  salvarControles,
+  MODOS_TIRO,
+  SENSIBILIDADES,
+  ControlesConfig,
+  ModoTiro,
+} from '../shared/controles';
 
 interface SettingsViewProps {
   config: PlatformConfig;
@@ -22,7 +30,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 }) => {
   const [salvoFeedback, setSalvoFeedback] = useState(false);
   const [mostrarConfirmacaoLimpar, setMostrarConfirmacaoLimpar] = useState(false);
+  const [controles, setControles] = useState<ControlesConfig>(() => lerControles());
   const jogador = lerJogador();
+
+  const atualizarControle = <K extends keyof ControlesConfig>(chave: K, valor: ControlesConfig[K]) => {
+    const novo = salvarControles({ [chave]: valor } as Partial<ControlesConfig>);
+    setControles(novo);
+    setSalvoFeedback(true);
+    setTimeout(() => setSalvoFeedback(false), 1500);
+  };
 
   const handleTrocarJogador = () => {
     limparJogador();
@@ -133,6 +149,133 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               {Math.round(config.volume * 100)}%
             </span>
           </div>
+        </div>
+
+        {/* CONTROLES POR TOQUE (piloto "arrastar") */}
+        <div className="py-4">
+          <h3 className="text-xs font-bold text-white flex items-center gap-1.5 mb-3">
+            <Hand className="w-4 h-4 text-cyan-400" />
+            CONTROLES POR TOQUE
+            <span className="text-[8px] text-slate-500 font-normal ml-1">Invasores Cósmicos 84</span>
+          </h3>
+
+          {/* Sensibilidade */}
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[9px] text-slate-400 flex items-center gap-1.5">
+                <Gauge className="w-3.5 h-3.5 text-slate-500" />
+                SENSIBILIDADE DO ARRASTO
+              </span>
+              <span className="text-[10px] text-cyan-300 font-bold tabular-nums">{controles.sensibilidade}x</span>
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {SENSIBILIDADES.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => atualizarControle('sensibilidade', s)}
+                  className={`py-1.5 rounded text-[8px] font-bold border transition-all ${
+                    controles.sensibilidade === s
+                      ? 'bg-cyan-600 text-white border-cyan-400'
+                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
+                  }`}
+                >
+                  {s}x
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Modo de tiro */}
+          <div className="mb-3">
+            <span className="text-[9px] text-slate-400 flex items-center gap-1.5 mb-1.5">
+              <Zap className="w-3.5 h-3.5 text-slate-500" />
+              MODO DE TIRO
+            </span>
+            <div className="grid grid-cols-3 gap-1.5">
+              {MODOS_TIRO.map((modo) => (
+                <button
+                  key={modo.id}
+                  onClick={() => atualizarControle('modoTiro', modo.id as ModoTiro)}
+                  title={modo.descricao}
+                  className={`py-2 px-1.5 rounded text-[8px] font-bold border text-center transition-all ${
+                    controles.modoTiro === modo.id
+                      ? 'bg-red-600 text-white border-red-400 shadow-md'
+                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
+                  }`}
+                >
+                  {modo.rotulo}
+                </button>
+              ))}
+            </div>
+            <p className="text-[7px] text-slate-600 mt-1">
+              {MODOS_TIRO.find((m) => m.id === controles.modoTiro)?.descricao}
+            </p>
+          </div>
+
+          {/* Canhoto + Vibração */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => atualizarControle('canhoto', !controles.canhoto)}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all ${
+                controles.canhoto
+                  ? 'bg-cyan-600/20 border-cyan-500/60 text-cyan-300'
+                  : 'bg-slate-800 border-slate-700 text-slate-400'
+              }`}
+            >
+              <span className="text-[8px] font-bold text-left">
+                MODO CANHOTO
+                <br />
+                <span className="text-[6px] text-slate-500 font-normal">faixa à direita, ATIRAR à esquerda</span>
+              </span>
+              <span className={`text-[8px] font-bold ${controles.canhoto ? 'text-cyan-300' : 'text-slate-500'}`}>
+                {controles.canhoto ? 'ON' : 'OFF'}
+              </span>
+            </button>
+
+            <button
+              onClick={() => atualizarControle('vibracao', !controles.vibracao)}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all ${
+                controles.vibracao
+                  ? 'bg-amber-600/20 border-amber-500/60 text-amber-300'
+                  : 'bg-slate-800 border-slate-700 text-slate-400'
+              }`}
+            >
+              <span className="text-[8px] font-bold text-left">
+                <Vibrate className="inline w-3.5 h-3.5 mr-1" />
+                VIBRAÇÃO
+                <br />
+                <span className="text-[6px] text-slate-500 font-normal">feedback tátil nos acertos</span>
+              </span>
+              <span className={`text-[8px] font-bold ${controles.vibracao ? 'text-amber-300' : 'text-slate-500'}`}>
+                {controles.vibracao ? 'ON' : 'OFF'}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* AVANÇADO */}
+        <div className="py-4">
+          <h3 className="text-xs font-bold text-white flex items-center gap-1.5 mb-3">
+            <Wrench className="w-4 h-4 text-slate-400" />
+            AVANÇADO
+          </h3>
+          <button
+            onClick={() => atualizarControle('diagnostico', !controles.diagnostico)}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all ${
+              controles.diagnostico
+                ? 'bg-purple-600/20 border-purple-500/60 text-purple-300'
+                : 'bg-slate-800 border-slate-700 text-slate-400'
+            }`}
+          >
+            <span className="text-[8px] font-bold text-left">
+              MOSTRAR DIAGNÓSTICO DE TOQUE
+              <br />
+              <span className="text-[6px] text-slate-500 font-normal">ponteiros, arrasteDX e latência sobre o jogo</span>
+            </span>
+            <span className={`text-[8px] font-bold ${controles.diagnostico ? 'text-purple-300' : 'text-slate-500'}`}>
+              {controles.diagnostico ? 'ON' : 'OFF'}
+            </span>
+          </button>
         </div>
 
         {/* CONTROLES TOUCH NA TELA */}

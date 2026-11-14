@@ -71,3 +71,24 @@ Recordes e o histórico das últimas 50 partidas ficam no `localStorage`. A opç
 ## PWA
 
 O projeto usa `vite-plugin-pwa` para gerar o manifest e o service worker. Para o banner de instalação e os ícones funcionarem corretamente, adicione os PNGs `pwa-192x192.png`, `pwa-512x512.png`, `pwa-maskable-512x512.png` e `apple-touch-icon.png` em `public/`.
+
+## Teste manual — piloto de controles por gestos ("arrastar")
+
+O jogo **Invasores Cósmicos 84** tem um piloto opcional de controle por gestos (o esquema "arrastar": arrastar na faixa move o canhão; botão ATIRAR dispara). **Todos os outros jogos continuam com o D-pad e os botões A/B de sempre.**
+
+A chave de segurança do piloto fica em `NOVA_ENTRADA_TOUCH`, em `src/shared/constants.ts` (padrão: `true`). Com `false`, o Invasores volta a usar o controle clássico e nada do piloto atua.
+
+Preferências do piloto (esquema por jogo, modo de tiro, sensibilidade, canhoto, vibração, diagnóstico de toque e a dica de primeiro uso) ficam em `fliperama_controles_v1` no `localStorage`.
+
+### Roteiro de teste manual (celular ou emulação de toque no DevTools)
+
+1. **Arrastar com um polegar**: abra o Invasores, deslize o dedo para a esquerda/direita na faixa — o canhão acompanha proporcionalmente e para na hora ao soltar.
+2. **Arrastar e atirar com os dois dedos**: com um dedo arrastando, toque no botão ATIRAR — o tiro é disparado sem soltar a faixa.
+3. **Alternar o esquema durante a partida**: na barra superior (ícone ⇄) ou em "?" → CONTROLE DE TOQUE, alterne "Arrastar (novo)" e "Botões na tela (reserva)" — aplica na hora, sem reiniciar a partida; no desktop o seletor não aparece.
+4. **Pausar e retomar com o dedo na tela**: com o dedo na faixa, pressione P (ou o botão de pausa) — nada fica preso; ao retomar, a faixa responde normalmente.
+5. **Teclado no computador**: Setas/A/D movem o canhão e Espaço atira; não há widgets de toque na tela.
+6. **Outros jogos**: Salve a Hannah, Tatu, pinball etc. continuam com o D-pad e os botões A/B exatamente como antes, sem nenhuma mudança.
+
+Diagnóstico de toque: Ajustes → Avançado → "Mostrar diagnóstico de toque" sobrepõe sobre o jogo os ponteiros ativos (pointerId), o arrasteDX, o modo de tiro e a latência estimada (descartes devem ficar em zero).
+
+Vibração (Invasores): tiros/acertos/explosões/dano/fim de jogo emitem padrões curtos via `navigator.vibrate` quando disponível. Em navegadores sem a API (Safari do iPhone), nada acontece e não há erros.

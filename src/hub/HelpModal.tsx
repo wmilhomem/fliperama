@@ -4,8 +4,10 @@
  */
 
 import React from 'react';
-import { X, Gamepad2, Award, Info, Keyboard } from 'lucide-react';
+import { X, Gamepad2, Award, Info, Keyboard, MoveHorizontal, LayoutGrid, Hand } from 'lucide-react';
 import { GameModule } from '../engine/types';
+import { NOVA_ENTRADA_TOUCH } from '../shared/constants';
+import { esquemaDoJogo, salvarEsquema, pedirDicaDeToque } from '../shared/controles';
 
 interface HelpModalProps {
   jogo?: GameModule;
@@ -122,6 +124,50 @@ export const HelpModal: React.FC<HelpModalProps> = ({ jogo, onFechar }) => {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* CONTROLE DE TOQUE (piloto "arrastar") */}
+        {jogo?.controleTouch && NOVA_ENTRADA_TOUCH && (
+          <div className="mb-4 p-3 rounded-lg bg-slate-900 border border-cyan-800/70">
+            <h3 className="text-[10px] font-bold text-cyan-400 flex items-center gap-1.5 mb-2">
+              <MoveHorizontal className="w-3.5 h-3.5" />
+              CONTROLE DE TOQUE
+            </h3>
+            <p className="text-[8px] text-slate-400 mb-2">
+              Arraste na faixa para mover e toque em ATIRAR. Reserva: botões na tela.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => salvarEsquema(jogo.id, 'arrastar')}
+                className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-[8px] font-bold border transition-all ${
+                  esquemaDoJogo(jogo.id, jogo.controleTouch.padrao) === 'arrastar'
+                    ? 'bg-cyan-600/80 border-cyan-400 text-white'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <MoveHorizontal className="w-3.5 h-3.5" />
+                ARRASTAR (NOVO)
+              </button>
+              <button
+                onClick={() => salvarEsquema(jogo.id, 'classico')}
+                className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-[8px] font-bold border transition-all ${
+                  esquemaDoJogo(jogo.id, jogo.controleTouch.padrao) === 'classico'
+                    ? 'bg-amber-600/80 border-amber-400 text-white'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                BOTÕES NA TELA (RESERVA)
+              </button>
+            </div>
+            <button
+              onClick={pedirDicaDeToque}
+              className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[8px] font-bold text-slate-300 bg-slate-800/80 border border-slate-700 hover:text-white hover:border-slate-600 transition-colors"
+            >
+              <Hand className="w-3.5 h-3.5" />
+              VER DICA DE 3 SEGUNDOS
+            </button>
           </div>
         )}
 

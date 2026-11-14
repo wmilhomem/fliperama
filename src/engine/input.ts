@@ -318,6 +318,8 @@ export class UnifiedInputManager {
       reiniciarPressionado,
       voltarPressionado,
       mudoPressionado,
+      arrasteDX: 0,
+      arrastando: false,
     };
   }
 

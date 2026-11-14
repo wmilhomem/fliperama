@@ -4,6 +4,7 @@
  */
 
 import { EngineContext, GameInstance, GameModule, InputState } from '../../engine/types';
+import { lerControles } from '../../shared/controles';
 
 /**
  * INVASORES CÓSMICOS 84 — Shoot 'em up espacial retrô
@@ -118,12 +119,16 @@ export const invasores84GameModule: GameModule = {
   corTema: '#22C55E',
   largura: LARGURA,
   altura: ALTURA,
+  controleTouch: {
+    padrao: 'arrastar',
+    esquemas: ['arrastar', 'classico'],
+  },
   instrucoes: {
     historia:
       'Durante uma patrulha na órbita da Terra, o RX-84 "Gorgon" detecta uma imensa formação inimiga se aproximando. Você é a última linha de defesa da base orbital: derrube cada um dos invasores antes que eles toquem o solo.',
     controles: [
-      'Setas Esquerda/Direita ou A/D: mover o canhão',
-      'Espaço / Botão A: disparar (mantenha pressionado para fogo contínuo)',
+      'Setas Esquerda/Direita ou A/D: mover o canhão (ou arraste na faixa)',
+      'Espaço / Botão ATIRAR: disparar (mantenha pressionado para fogo contínuo)',
       'P: pausar  ·  R: reiniciar',
     ],
     pontos: [
@@ -262,6 +267,7 @@ export const invasores84GameModule: GameModule = {
       for (const inv of vivos) {
         if (inv.y >= LINHA_BASE_CANHAO - 40) {
           estadoJogo = 'GAMEOVER';
+          ctx.haptics.tocar('fim');
           ctx.finalizarJogo('gameOver');
           return;
         }
@@ -273,6 +279,7 @@ export const invasores84GameModule: GameModule = {
       tiros.push({ x: jogador.x, y: jogador.y - 18, vy: -520 });
       jogador.cooldown = 0.22;
       ctx.audio.tocar('tiro');
+      ctx.haptics.tocar('tiro');
     }
 
     function atualizarTiros(dt: number) {
@@ -369,6 +376,8 @@ export const invasores84GameModule: GameModule = {
             ctx.hud.adicionarPontos(pontos, inv.x, inv.y, PALETA_INVASOR[inv.tipo]);
             gerarExplosao(inv.x, inv.y, PALETA_INVASOR[inv.tipo], 16);
             ctx.audio.tocar('explosao');
+            ctx.haptics.tocar('acerto');
+            ctx.haptics.tocar('explosao');
             break;
           }
         }
@@ -433,10 +442,12 @@ export const invasores84GameModule: GameModule = {
             consumida = true;
             gerarExplosao(jogador.x, jogador.y, '#FBBF24', 26);
             ctx.audio.tocar('vidaPerdida');
+            ctx.haptics.tocar('dano');
             const restantes = ctx.hud.perderVida();
             jogador.invulneravel = 2.2;
             if (restantes <= 0) {
               estadoJogo = 'GAMEOVER';
+              ctx.haptics.tocar('fim');
               ctx.finalizarJogo('gameOver');
               return;
             }
@@ -470,11 +481,18 @@ export const invasores84GameModule: GameModule = {
         return;
       }
 
-      // Movimento do canhão
-      let move = 0;
-      if (input.esquerda) move -= 1;
-      if (input.direita) move += 1;
-      jogador.x += move * jogador.velocidade * dt;
+      // Movimento do canhão — teclado ou arrasto gestual (Invasores)
+      const sens = lerControles().sensibilidade;
+      if (input.arrastando && input.arrasteDX !== 0) {
+        const delta = input.arrasteDX * sens;
+        const maxDelta = jogador.velocidade * dt * 2;
+        jogador.x += Math.max(-maxDelta, Math.min(maxDelta, delta));
+      } else {
+        let move = 0;
+        if (input.esquerda) move -= 1;
+        if (input.direita) move += 1;
+        jogador.x += move * jogador.velocidade * dt;
+      }
       jogador.x = Math.max(jogador.largura / 2 + 4, Math.min(LARGURA - jogador.largura / 2 - 4, jogador.x));
 
       // Disparo: mantenha pressionado para fogo contínuo
