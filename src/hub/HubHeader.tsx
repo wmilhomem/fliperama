@@ -38,7 +38,7 @@ export const HubHeader: React.FC<HubHeaderProps> = ({
             {PLATFORM_NAME}
           </h1>
           <p className="text-[8px] md:text-[9px] text-slate-400 tracking-wider">
-            GABINETE ARCADE RETRÔ DOS ANOS 80
+            GABINETE RETRÔ DOS ANOS 80
           </p>
         </div>
       </div>
