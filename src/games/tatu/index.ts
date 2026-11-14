@@ -51,7 +51,7 @@ export const tatuGameModule: GameModule = {
   altura: 560,
   instrucoes: {
     historia:
-      'Um esperto tatu-bola explora um labirinto de pedras à noite, coletando sementes enquanto quatro sombras ancestrais o perseguem. Ao saborear uma pimenta vermelha, ele se enrola em uma bola blindada invencível capaz de dispersar as sombras!',
+      'Um esperto tatu-bola explora um labirinto de pedras à noite, coletando sementes enquanto quatro sombras ancestrais o perseguem. Ao saborear uma pimenta vermelha, ele se enrola em uma bola blindada invencível capaz de dispersar as sombras! A partir da fase 4, pimentas alternadas perdem o efeito.',
     controles: [
       'Setas / WASD / D-Pad: Mover o Tatu nas 4 direções',
       'Buffer de curva automático para curvas perfeitas em esquinas',
@@ -78,6 +78,7 @@ export const tatuGameModule: GameModule = {
     let fase = 1;
     let vidas = 3;
     let vidaExtraConcedida = false;
+    let pimentasComidas = 0;
 
     type EstadoFase = 'PRONTO' | 'JOGANDO' | 'PERDENDO_VIDA' | 'FASE_COMPLETA' | 'GAMEOVER';
     let estado: EstadoFase = 'PRONTO';
@@ -101,6 +102,7 @@ export const tatuGameModule: GameModule = {
       totalSementesIniciais = contagem.sementes;
       sementesRestantes = totalSementesIniciais;
       sementesComidasTotal = 0;
+      pimentasComidas = 0;
 
       if (!preservarPontos) {
         vidas = 3;
@@ -245,7 +247,9 @@ export const tatuGameModule: GameModule = {
             sementesComidasTotal++;
 
             ctx.hud.adicionarPontos(10);
-            ctx.audio.tocar('semente');
+            // Tique curto alternado (dois tons)
+            altSomSemente = !altSomSemente;
+            ctx.audio.tocarTom(altSomSemente ? 620 : 380, 'square', 0.035, 0.5);
 
             // Spawn de frutas brasileiras (duas vezes por fase)
             if (sementesComidasTotal === 70 || sementesComidasTotal === 170) {
@@ -265,15 +269,20 @@ export const tatuGameModule: GameModule = {
           // 2. Pimenta grande (Modo Bola)
           else if (tile === 3) {
             grid[rowTatu][colTatu] = 0;
+            pimentasComidas++;
             ctx.hud.adicionarPontos(50, tatu.x, tatu.y - 10, '#EF4444');
             ctx.audio.tocar('alerta');
 
-            tatu.modoBola = true;
-            // Duração da pimenta encurta em fases mais avançadas
-            const duracaoPimenta = Math.max(3.5, 7.5 - (fase - 1) * 0.6);
-            tatu.tempoModoBola = duracaoPimenta;
+            // A partir da fase 4, pimentas alternadas não assustam as sombras
+            const assusta = fase < 4 || pimentasComidas % 2 === 1;
+            if (assusta) {
+              tatu.modoBola = true;
+              // Duração da pimenta encurta em fases mais avançadas
+              const duracaoPimenta = Math.max(3.5, 7.5 - (fase - 1) * 0.6);
+              tatu.tempoModoBola = duracaoPimenta;
 
-            assustarSombras(sombrasGen, duracaoPimenta);
+              assustarSombras(sombrasGen, duracaoPimenta);
+            }
           }
         }
 
@@ -372,6 +381,7 @@ export const tatuGameModule: GameModule = {
       destruir() {
         grid = [];
         sombrasGen.sombras = [];
+        fruta.ativa = false;
       },
     };
   },

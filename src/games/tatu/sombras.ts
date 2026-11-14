@@ -52,28 +52,28 @@ const CONFIG_SOMBRAS: Record<
     nome: 'Fúria',
     cor: '#EF4444', // Vermelho Neon
     cantoDispersao: { col: 25, row: 0 },
-    posInicialToca: { col: 13.5, row: 11 }, // Já inicia fora da toca, logo acima do portão
+    posInicialToca: { col: 13.5, row: 9 }, // Já inicia fora da toca, no corredor acima do portão
     delaySaida: 0,
   },
   roxa: {
     nome: 'Espreita',
     cor: '#A855F7', // Roxo Neon
     cantoDispersao: { col: 2, row: 0 },
-    posInicialToca: { col: 13.5, row: 13 },
+    posInicialToca: { col: 13.5, row: 12 },
     delaySaida: 2.0,
   },
   azul: {
     nome: 'Vigilante',
     cor: '#06B6D4', // Ciano Neon
     cantoDispersao: { col: 27, row: 30 },
-    posInicialToca: { col: 11.5, row: 13 },
+    posInicialToca: { col: 11.5, row: 12 },
     delaySaida: 5.0,
   },
   laranja: {
     nome: 'Tímida',
     cor: '#F97316', // Laranja Neon
     cantoDispersao: { col: 0, row: 30 },
-    posInicialToca: { col: 15.5, row: 13 },
+    posInicialToca: { col: 15.5, row: 12 },
     delaySaida: 8.5,
   },
 };
@@ -219,8 +219,8 @@ export function atualizarSombras(
     // Comportamento dentro da toca
     if (s.modo === 'naToca') {
       s.timerSaidaToca -= dt;
-      // Quique suave dentro da toca
-      const yTocaBase = MAZE_OFFSET_Y + 13 * TILE_SIZE + TILE_SIZE / 2;
+      // Quique suave dentro da toca (linha central do interior, linha 12)
+      const yTocaBase = MAZE_OFFSET_Y + 12 * TILE_SIZE + TILE_SIZE / 2;
       s.y = yTocaBase + Math.sin(performance.now() / 200) * 3;
 
       if (s.timerSaidaToca <= 0) {
@@ -232,7 +232,7 @@ export function atualizarSombras(
     // Saindo da toca pelo portão
     if (s.modo === 'saindo') {
       const centroX = MAZE_OFFSET_X + 13.5 * TILE_SIZE;
-      const saidaY = MAZE_OFFSET_Y + 11 * TILE_SIZE + TILE_SIZE / 2;
+      const saidaY = MAZE_OFFSET_Y + 9 * TILE_SIZE + TILE_SIZE / 2;
 
       // Centraliza horizontalmente e sobe até sair pelo portão
       if (Math.abs(s.x - centroX) > 2.5) {
@@ -252,14 +252,14 @@ export function atualizarSombras(
     // Modo olhos voltando para a toca para renascer
     if (s.modo === 'olhos') {
       const portaCol = 13.5;
-      const portaRow = 11;
+      const portaRow = 10;
       const portaX = MAZE_OFFSET_X + portaCol * TILE_SIZE;
       const portaY = MAZE_OFFSET_Y + portaRow * TILE_SIZE + TILE_SIZE / 2;
 
       // Se alcançou a porta da toca, desce e renasce
       if (Math.hypot(s.x - portaX, s.y - portaY) < 12) {
         s.x = portaX;
-        s.y = MAZE_OFFSET_Y + 13 * TILE_SIZE + TILE_SIZE / 2;
+        s.y = MAZE_OFFSET_Y + 12 * TILE_SIZE + TILE_SIZE / 2;
         s.modo = 'saindo';
         s.velocidade = 130 + Math.min(45, (fase - 1) * 6);
         continue;

@@ -65,6 +65,36 @@ export function renderizarLabirinto(
         if (!ehVizinhoBaixo) g.fillRect(px, py + TILE_SIZE - 2.5, TILE_SIZE, 2.5);
         if (!ehVizinhoEsq) g.fillRect(px, py, 2.5, TILE_SIZE);
         if (!ehVizinhoDir) g.fillRect(px + TILE_SIZE - 2.5, py, 2.5, TILE_SIZE);
+
+        // Cantos arredondados: só nos vértices expostos à passagem
+        const ehParede = (r: number, c: number) =>
+          r >= 0 && r < MAZE_ROWS && c >= 0 && c < MAZE_COLS && grid[r][c] === 1;
+        const cantos: { cx: number; cy: number; vizA: [number, number]; vizB: [number, number]; arco: [number, number, number, number] }[] = [
+          { cx: px, cy: py, vizA: [r - 1, c], vizB: [r, c - 1], arco: [px + 5, py + 5, Math.PI, Math.PI * 1.5] },
+          { cx: px + TILE_SIZE, cy: py, vizA: [r - 1, c], vizB: [r, c + 1], arco: [px + TILE_SIZE - 5, py + 5, Math.PI * 1.5, Math.PI * 2] },
+          { cx: px + TILE_SIZE, cy: py + TILE_SIZE, vizA: [r + 1, c], vizB: [r, c + 1], arco: [px + TILE_SIZE - 5, py + TILE_SIZE - 5, 0, Math.PI * 0.5] },
+          { cx: px, cy: py + TILE_SIZE, vizA: [r + 1, c], vizB: [r, c - 1], arco: [px + 5, py + TILE_SIZE - 5, Math.PI * 0.5, Math.PI] },
+        ];
+        for (const canto of cantos) {
+          if (ehParede(canto.vizA[0], canto.vizA[1]) || ehParede(canto.vizB[0], canto.vizB[1])) continue;
+          // Remove o vértice quadrado e desenha o arco luminoso
+          g.save();
+          g.fillStyle = '#030712';
+          g.beginPath();
+          g.moveTo(canto.cx, canto.cy);
+          if (canto.cx === px && canto.cy === py) { g.lineTo(px + 5, py); g.arc(px + 5, py + 5, 5, Math.PI, Math.PI * 1.5); }
+          else if (canto.cx === px + TILE_SIZE && canto.cy === py) { g.lineTo(px + TILE_SIZE - 5, py); g.arc(px + TILE_SIZE - 5, py + 5, 5, Math.PI * 1.5, Math.PI * 2); }
+          else if (canto.cx === px + TILE_SIZE && canto.cy === py + TILE_SIZE) { g.lineTo(px + TILE_SIZE - 5, py + TILE_SIZE); g.arc(px + TILE_SIZE - 5, py + TILE_SIZE - 5, 5, 0, Math.PI * 0.5); }
+          else { g.lineTo(px + 5, py + TILE_SIZE); g.arc(px + 5, py + TILE_SIZE - 5, 5, Math.PI * 0.5, Math.PI); }
+          g.closePath();
+          g.fill();
+          g.strokeStyle = corParedeBrilho;
+          g.lineWidth = 2;
+          g.beginPath();
+          g.arc(canto.arco[0], canto.arco[1], 5, canto.arco[2], canto.arco[3]);
+          g.stroke();
+          g.restore();
+        }
       }
 
       // 2. Portão da toca das sombras
@@ -135,7 +165,7 @@ export function renderizarTatu(g: CanvasRenderingContext2D, tatu: TatuHero): voi
     // -------------------------------------------------------------
     // MODO BOLA BLINDADA (Rolando e brilhando em verde-limão neon)
     // -------------------------------------------------------------
-    const rot = (performance.now() / 60) % (Math.PI * 2);
+    const rot = (tatu.animFrame % 4) * (Math.PI / 2); // 4 quadros de giro
     g.rotate(rot);
 
     // Glow verde-limão
