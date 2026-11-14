@@ -9,7 +9,6 @@ import {
   RotateCcw,
   Volume2,
   VolumeX,
-  Tv,
   HelpCircle,
   Pause,
   Play,
@@ -34,7 +33,6 @@ interface GameRunnerProps {
   config: PlatformConfig;
   onVoltarAoHub: () => void;
   onAbrirAjuda: () => void;
-  onAlternarCRT: () => void;
   onAlternarSom: () => void;
 }
 
@@ -43,7 +41,6 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
   config,
   onVoltarAoHub,
   onAbrirAjuda,
-  onAlternarCRT,
   onAlternarSom,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -359,19 +356,6 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
             <span className="text-[9px] hidden md:inline">RESET</span>
           </button>
 
-          {/* Efeito CRT */}
-          <button
-            onClick={onAlternarCRT}
-            title="Alternar efeito retrô CRT"
-            className={`p-1.5 rounded transition-colors ${
-              config.efeitoCRT
-                ? 'bg-amber-600/30 text-amber-400 border border-amber-600/50'
-                : 'bg-slate-800 text-slate-400'
-            }`}
-          >
-            <Tv className="w-3.5 h-3.5" />
-          </button>
-
           {/* Som */}
           <button
             onClick={alternarMudoLocal}
@@ -402,10 +386,6 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
           className="relative rounded-xl overflow-hidden p-2 md:p-3 bg-gradient-to-b from-neutral-900 via-neutral-950 to-neutral-900 border-2 shadow-[0_0_40px_rgba(239,68,68,0.25)] flex items-center justify-center max-w-full"
           style={{ borderColor: modulo.corTema }}
         >
-          {config.efeitoCRT && (
-            <div className="absolute inset-0 crt-overlay z-10 pointer-events-none rounded-lg" />
-          )}
-
           <canvas
             ref={canvasRef}
             width={modulo.largura}

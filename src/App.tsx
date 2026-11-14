@@ -52,10 +52,6 @@ export default function App() {
     }
   };
 
-  const handleAlternarCRT = () => {
-    salvarConfig({ ...config, efeitoCRT: !config.efeitoCRT });
-  };
-
   const handleAlternarSom = () => {
     salvarConfig({ ...config, somAtivo: !config.somAtivo });
   };
@@ -82,7 +78,6 @@ export default function App() {
           config={config}
           onVoltarAoHub={handleVoltarAoHub}
           onAbrirAjuda={() => setShowHelp(true)}
-          onAlternarCRT={handleAlternarCRT}
           onAlternarSom={handleAlternarSom}
         />
       ) : (
@@ -91,10 +86,9 @@ export default function App() {
           <HubHeader
             visaoAtual={visao}
             onMudarVisao={(v) => setVisao(v)}
-            config={config}
-            onAlternarCRT={handleAlternarCRT}
-            onAlternarSom={handleAlternarSom}
-          />
+             config={config}
+             onAlternarSom={handleAlternarSom}
+           />
 
           <main className="w-full flex-1 flex flex-col items-center justify-start py-2">
             {visao === 'hub' && (

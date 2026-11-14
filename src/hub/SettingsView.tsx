@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Settings, Volume2, Tv, Smartphone, Trash2, ArrowLeft, Check, AlertTriangle } from 'lucide-react';
+import { Settings, Volume2, Smartphone, Trash2, ArrowLeft, Check, AlertTriangle } from 'lucide-react';
 import { PlatformConfig } from '../shared/types';
 import { RetroStorageService } from '../engine/storage';
 
@@ -103,29 +103,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <span className="text-[10px] text-emerald-400 w-12 text-right tabular-nums">
               {Math.round(config.volume * 100)}%
             </span>
-          </div>
-        </div>
-
-        {/* EFEITO DE TELA CRT */}
-        <div className="py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <Tv className="w-5 h-5 text-amber-400" />
-              <div>
-                <h3 className="text-xs font-bold text-white">EFEITO DE MONITOR CRT (SCANLINES)</h3>
-                <p className="text-[9px] text-slate-400">Simula as linhas de varredura e curvatura de tubo dos fliperamas dos anos 80</p>
-              </div>
-            </div>
-            <button
-              onClick={() => atualizar('efeitoCRT', !config.efeitoCRT)}
-              className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-colors ${
-                config.efeitoCRT
-                  ? 'bg-amber-600 text-white border-amber-400'
-                  : 'bg-slate-800 text-slate-400 border-slate-700'
-              }`}
-            >
-              {config.efeitoCRT ? 'LIGADO' : 'DESLIGADO'}
-            </button>
           </div>
         </div>
 

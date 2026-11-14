@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Gamepad2, Trophy, Settings, Tv, Volume2, VolumeX } from 'lucide-react';
+import { Gamepad2, Trophy, Settings, Volume2, VolumeX } from 'lucide-react';
 import { PlatformView, PlatformConfig } from '../shared/types';
 import { PLATFORM_NAME } from '../shared/constants';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -13,7 +13,6 @@ interface HubHeaderProps {
   visaoAtual: PlatformView;
   onMudarVisao: (visao: PlatformView) => void;
   config: PlatformConfig;
-  onAlternarCRT: () => void;
   onAlternarSom: () => void;
 }
 
@@ -21,7 +20,6 @@ export const HubHeader: React.FC<HubHeaderProps> = ({
   visaoAtual,
   onMudarVisao,
   config,
-  onAlternarCRT,
   onAlternarSom,
 }) => {
   return (
@@ -84,21 +82,9 @@ export const HubHeader: React.FC<HubHeaderProps> = ({
         </button>
       </nav>
 
-      {/* AÇÕES GLOBAIS (PWA, CRT, SOM) */}
+      {/* AÇÕES GLOBAIS (PWA, SOM) */}
       <div className="flex items-center gap-2">
         <PWAInstallButton />
-
-        <button
-          onClick={onAlternarCRT}
-          title="Alternar efeito retrô CRT"
-          className={`p-2 rounded-lg transition-colors border ${
-            config.efeitoCRT
-              ? 'bg-amber-600/20 text-amber-400 border-amber-500/50 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
-              : 'bg-slate-900 text-slate-500 border-slate-800'
-          }`}
-        >
-          <Tv className="w-3.5 h-3.5" />
-        </button>
 
         <button
           onClick={onAlternarSom}
