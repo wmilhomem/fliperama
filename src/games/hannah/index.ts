@@ -25,7 +25,7 @@ const PALETTE = {
   hammerWood: '#92400E',
   hannahPink: '#FF69B4',
   hannahDress: '#FFB6C1',
-  hannahHair: '#FFE135',
+  hannahHair: '#7A4A21',
   zecaOveralls: '#2563EB',
   zecaShirt: '#EF4444',
   zecaSkin: '#FCD34D',
