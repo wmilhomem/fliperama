@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -37,23 +37,7 @@ const PALETTE = {
   textYellow: '#FACC15',
 };
 
-interface Girder {
-  id: number;
-  xStart: number;
-  yStart: number;
-  xEnd: number;
-  yEnd: number;
-  height: number;
-  rollDirection: 1 | -1;
-}
-
-interface Ladder {
-  x: number;
-  yTop: number;
-  yBottom: number;
-  broken: boolean;
-  brokenGapY?: number;
-}
+import { gerarEstrutura, Girder, Ladder } from './estrutura';
 
 interface ItemBonus {
   id: string;
@@ -71,47 +55,19 @@ interface HammerItem {
   collected: boolean;
 }
 
-const GIRDERS: Girder[] = [
-  // Topo: Plataforma da Hannah (Centro)
-  { id: 0, xStart: 180, yStart: 75, xEnd: 300, yEnd: 75, height: 12, rollDirection: 1 },
-  // Topo: Plataforma do Grotão (Esquerda)
-  { id: 1, xStart: 25, yStart: 125, xEnd: 175, yEnd: 125, height: 12, rollDirection: 1 },
-  // Andar 5: Inclina para a esquerda
-  { id: 2, xStart: 65, yStart: 175, xEnd: 445, yEnd: 155, height: 12, rollDirection: -1 },
-  // Andar 4: Inclina para a direita
-  { id: 3, xStart: 35, yStart: 245, xEnd: 415, yEnd: 265, height: 12, rollDirection: 1 },
-  // Andar 3: Inclina para a esquerda
-  { id: 4, xStart: 65, yStart: 355, xEnd: 445, yEnd: 335, height: 12, rollDirection: -1 },
-  // Andar 2: Inclina para a direita
-  { id: 5, xStart: 35, yStart: 425, xEnd: 415, yEnd: 445, height: 12, rollDirection: 1 },
-  // Andar 1: Térreo plano
-  { id: 6, xStart: 20, yStart: 520, xEnd: 460, yEnd: 520, height: 14, rollDirection: -1 },
-];
-
-const LADDERS: Ladder[] = [
-  { x: 240, yTop: 75, yBottom: 166, broken: false },
-  { x: 100, yTop: 173, yBottom: 248, broken: false },
-  { x: 380, yTop: 159, yBottom: 263, broken: false },
-  { x: 230, yTop: 166, yBottom: 255, broken: true, brokenGapY: 210 },
-  { x: 130, yTop: 250, yBottom: 351, broken: false },
-  { x: 390, yTop: 264, yBottom: 338, broken: false },
-  { x: 270, yTop: 257, yBottom: 344, broken: true, brokenGapY: 300 },
-  { x: 90, yTop: 354, yBottom: 428, broken: false },
-  { x: 360, yTop: 339, yBottom: 442, broken: false },
-  { x: 210, yTop: 347, yBottom: 434, broken: true, brokenGapY: 390 },
-  { x: 400, yTop: 444, yBottom: 520, broken: false },
-  { x: 160, yTop: 432, yBottom: 520, broken: false },
-  { x: 280, yTop: 438, yBottom: 520, broken: true, brokenGapY: 478 },
-];
-
 function getGirderYAt(girder: Girder, x: number): number | null {
   if (x < girder.xStart || x > girder.xEnd) return null;
   const ratio = (x - girder.xStart) / (girder.xEnd - girder.xStart);
   return girder.yStart + (girder.yEnd - girder.yStart) * ratio;
 }
 
-function findGirderBelow(x: number, y: number, tolerance = 12): { girder: Girder; surfaceY: number } | null {
-  for (const g of GIRDERS) {
+function findGirderBelow(
+  girders: Girder[],
+  x: number,
+  y: number,
+  tolerance = 12
+): { girder: Girder; surfaceY: number } | null {
+  for (const g of girders) {
     const gy = getGirderYAt(g, x);
     if (gy !== null) {
       if (y >= gy - tolerance && y <= gy + tolerance + 4) {
@@ -122,8 +78,14 @@ function findGirderBelow(x: number, y: number, tolerance = 12): { girder: Girder
   return null;
 }
 
-function checkBarrelGirderLanding(prevY: number, currY: number, x: number, radius: number): { girder: Girder; surfaceY: number } | null {
-  for (const g of GIRDERS) {
+function checkBarrelGirderLanding(
+  girders: Girder[],
+  prevY: number,
+  currY: number,
+  x: number,
+  radius: number
+): { girder: Girder; surfaceY: number } | null {
+  for (const g of girders) {
     if (x >= g.xStart - 4 && x <= g.xEnd + 4) {
       const clampedX = Math.max(g.xStart, Math.min(g.xEnd, x));
       const gy = getGirderYAt(g, clampedX);
@@ -227,6 +189,9 @@ export const hannahGameModule: GameModule = {
       walkTimer: 0,
     };
 
+    let girders: Girder[] = [];
+    let ladders: Ladder[] = [];
+
     let grotao = {
       x: 95,
       y: 85,
@@ -274,6 +239,25 @@ export const hannahGameModule: GameModule = {
       fase = novaFase;
       bonusTimer = Math.max(3000, 5000 - (novaFase - 1) * 300);
 
+      // Estrutura nova a cada fase (determinística por fase)
+      const estrutura = gerarEstrutura(novaFase);
+      girders = estrutura.girders;
+      ladders = estrutura.ladders;
+      const gTopo = girders.find((g) => g.id === 0)!;
+      const gGrotao = girders.find((g) => g.id === 1)!;
+      const g3 = girders.find((g) => g.id === 3)!;
+      const g4 = girders.find((g) => g.id === 4)!;
+      const g2 = girders.find((g) => g.id === 2)!;
+      const yG3 = (x: number) => getGirderYAt(g3, x) ?? 250;
+      const yG4 = (x: number) => getGirderYAt(g4, x) ?? 340;
+      const yG2 = (x: number) => getGirderYAt(g2, x) ?? 160;
+      const centroG = (g: { xStart: number; xEnd: number; yStart: number; yEnd: number }) => ({
+        x: (Math.min(g.xStart, g.xEnd) + Math.max(g.xStart, g.xEnd)) / 2,
+        y: (g.yStart + g.yEnd) / 2,
+      });
+      const topoHannah = centroG(gTopo);
+      const topoGrotao = centroG(gGrotao);
+
       if (!preservarPontos) {
         vidas = 3;
         ctx.hud.definirEstado({
@@ -313,8 +297,8 @@ export const hannahGameModule: GameModule = {
       };
 
       grotao = {
-        x: 95,
-        y: 85,
+        x: topoGrotao.x,
+        y: topoGrotao.y - 40,
         action: 'idle',
         actionTimer: 0,
         barrelSpawnTimer: Math.max(1.8, 3.5 - novaFase * 0.3),
@@ -322,8 +306,8 @@ export const hannahGameModule: GameModule = {
       };
 
       hannah = {
-        x: 235,
-        y: 48,
+        x: topoHannah.x,
+        y: topoHannah.y - 27,
         speechTimer: 0,
         heartTimer: 0,
         hearts: [],
@@ -334,15 +318,24 @@ export const hannahGameModule: GameModule = {
       particles = [];
       fireballSpawnTimer = Math.max(5.0, 9.0 - novaFase * 0.8);
 
+      const marreta1X = g4.xStart + (g4.xEnd - g4.xStart) * 0.25;
+      const marreta2X = g3.xStart + (g3.xEnd - g3.xStart) * 0.78;
       hammerItems = [
-        { id: 'h1', x: 75, y: 345, collected: false },
-        { id: 'h2', x: 385, y: 255, collected: false },
+        { id: 'h1', x: marreta1X, y: yG4(marreta1X) - 4, collected: false },
+        { id: 'h2', x: marreta2X, y: yG3(marreta2X) - 4, collected: false },
       ];
 
       bonusItems = [
-        { id: 'b1', type: 'chapeu', x: 320, y: 70, collected: false, points: 500 },
-        { id: 'b2', type: 'bolsa', x: 420, y: 150, collected: false, points: 500 },
-        { id: 'b3', type: 'guarda-chuva', x: 80, y: 235, collected: false, points: 500 },
+        { id: 'b1', type: 'chapeu', x: topoHannah.x + 34, y: topoHannah.y - 4, collected: false, points: 500 },
+        { id: 'b2', type: 'bolsa', x: g2.xEnd - 55, y: yG2(g2.xEnd - 55) - 4, collected: false, points: 500 },
+        {
+          id: 'b3',
+          type: 'guarda-chuva',
+          x: g3.xStart + (g3.xEnd - g3.xStart) * 0.18,
+          y: yG3(g3.xStart + (g3.xEnd - g3.xStart) * 0.18) - 4,
+          collected: false,
+          points: 500,
+        },
       ];
 
       estado = 'PLAYING';
@@ -481,7 +474,7 @@ export const hannahGameModule: GameModule = {
 
         // Checar escadas
         let nearLadder: Ladder | null = null;
-        for (const lad of LADDERS) {
+        for (const lad of ladders) {
           if (Math.abs(player.x - lad.x) < 14 && player.y >= lad.yTop - 6 && player.y <= lad.yBottom + 6) {
             nearLadder = lad;
             break;
@@ -546,7 +539,7 @@ export const hannahGameModule: GameModule = {
           }
 
           if (input.esquerda || input.direita) {
-            const support = findGirderBelow(player.x, player.y, 8);
+            const support = findGirderBelow(girders, player.x, player.y, 8);
             if (support) {
               player.isClimbing = false;
               player.onGround = true;
@@ -591,7 +584,7 @@ export const hannahGameModule: GameModule = {
           if (player.x < 30) player.x = 30;
           if (player.x > 450) player.x = 450;
 
-          const support = findGirderBelow(player.x, player.y, 10);
+          const support = findGirderBelow(girders, player.x, player.y, 10);
           if (support && player.vy >= 0) {
             if (player.y >= support.surfaceY - 4) {
               if (player.vy > 380) {
@@ -603,7 +596,7 @@ export const hannahGameModule: GameModule = {
               player.onGround = true;
             }
           } else if (player.onGround) {
-            const closeSupport = findGirderBelow(player.x, player.y + 4, 8);
+            const closeSupport = findGirderBelow(girders, player.x, player.y + 4, 8);
             if (closeSupport) {
               player.y = closeSupport.surfaceY;
             } else {
@@ -618,7 +611,10 @@ export const hannahGameModule: GameModule = {
         }
 
         // Vitória ao alcançar Hannah
-        if (player.y <= 85 && player.x >= 180 && player.x <= 280) {
+        const gTopoVitoria = girders.find((g) => g.id === 0)!;
+        const topoMinX = Math.min(gTopoVitoria.xStart, gTopoVitoria.xEnd);
+        const topoMaxX = Math.max(gTopoVitoria.xStart, gTopoVitoria.xEnd);
+        if (player.y <= gTopoVitoria.yStart + 12 && player.x >= topoMinX - 8 && player.x <= topoMaxX + 8) {
           handleVictory();
           return;
         }
@@ -655,10 +651,12 @@ export const hannahGameModule: GameModule = {
           grotao.actionTimer = 0;
 
           const isSpecial = Math.random() < 0.25 + fase * 0.05;
+          const gGrotaoBarrel = girders.find((g) => g.id === 1)!;
+          const spawnX = gGrotaoBarrel.xEnd - 45;
           barrels.push({
             id: nextBarrelId++,
-            x: 135,
-            y: 125 - 9,
+            x: spawnX,
+            y: (getGirderYAt(gGrotaoBarrel, spawnX) ?? 125) - 9,
             vx: 80 + fase * 10,
             vy: 0,
             radius: 9,
@@ -688,7 +686,7 @@ export const hannahGameModule: GameModule = {
             const prevY = b.y;
             b.y += 115 * dt;
 
-            const landing = checkBarrelGirderLanding(prevY, b.y, b.x, b.radius);
+            const landing = checkBarrelGirderLanding(girders, prevY, b.y, b.x, b.radius);
             if (landing) {
               b.y = landing.surfaceY - b.radius;
               b.vy = 0;
@@ -703,7 +701,7 @@ export const hannahGameModule: GameModule = {
           }
 
           if (b.currentGirderId !== null) {
-            const girder = GIRDERS.find((g) => g.id === b.currentGirderId);
+            const girder = girders.find((g) => g.id === b.currentGirderId);
             if (girder) {
               const dir = girder.rollDirection;
               const speed = b.isSpecial ? baseBarrelSpeed * 1.35 : baseBarrelSpeed;
@@ -720,9 +718,9 @@ export const hannahGameModule: GameModule = {
                 b.y = surfaceY - b.radius;
                 b.vy = 0;
 
-                // Chance de descer por uma escada
-                for (const lad of LADDERS) {
-                  if (!lad.broken && Math.abs(b.x - lad.x) < 7 && Math.abs(b.y + b.radius - lad.yTop) < 14) {
+                // Chance de descer por uma escada (inclusive as quebradas)
+                for (const lad of ladders) {
+                  if (Math.abs(b.x - lad.x) < 7 && Math.abs(b.y + b.radius - lad.yTop) < 14) {
                     if (Math.random() < 0.2 + fase * 0.04) {
                       b.onLadder = true;
                       b.currentGirderId = null;
@@ -744,7 +742,7 @@ export const hannahGameModule: GameModule = {
             b.y += b.vy * dt;
             b.x += b.vx * dt;
 
-            const landing = checkBarrelGirderLanding(prevY, b.y, b.x, b.radius);
+            const landing = checkBarrelGirderLanding(girders, prevY, b.y, b.x, b.radius);
             if (landing) {
               b.y = landing.surfaceY - b.radius;
               b.vy = 0;
@@ -828,7 +826,7 @@ export const hannahGameModule: GameModule = {
           fireballs.push({
             id: nextFireballId++,
             x: 60,
-            y: 508,
+            y: (getGirderYAt(girders.find((g) => g.id === 6)!, 60) ?? 520) - 4,
             vx: 45 + fase * 6,
             vy: 0,
             onLadder: false,
@@ -846,7 +844,7 @@ export const hannahGameModule: GameModule = {
 
           if (fb.onLadder) {
             fb.y -= 50 * dt;
-            const support = findGirderBelow(fb.x, fb.y, 6);
+            const support = findGirderBelow(girders, fb.x, fb.y, 6);
             if (support && fb.y <= support.surfaceY) {
               fb.y = support.surfaceY;
               fb.onLadder = false;
@@ -856,7 +854,7 @@ export const hannahGameModule: GameModule = {
             continue;
           }
 
-          const support = findGirderBelow(fb.x, fb.y, 8);
+          const support = findGirderBelow(girders, fb.x, fb.y, 8);
           if (support) {
             fb.y = support.surfaceY;
             if (fb.changeDirCooldown <= 0) {
@@ -868,7 +866,7 @@ export const hannahGameModule: GameModule = {
             }
 
             if (fb.climbCooldown <= 0) {
-              for (const lad of LADDERS) {
+              for (const lad of ladders) {
                 if (!lad.broken && Math.abs(fb.x - lad.x) < 10 && Math.abs(fb.y - lad.yBottom) < 8) {
                   if (Math.random() < 0.4) {
                     fb.onLadder = true;
@@ -951,7 +949,7 @@ export const hannahGameModule: GameModule = {
         g.fillRect(0, 0, ctx.largura, ctx.altura);
 
         // 1. Vigas de aço
-        for (const girder of GIRDERS) {
+        for (const girder of girders) {
           const dx = girder.xEnd - girder.xStart;
           const dy = girder.yEnd - girder.yStart;
           const len = Math.hypot(dx, dy);
@@ -992,7 +990,7 @@ export const hannahGameModule: GameModule = {
         }
 
         // 2. Escadas
-        for (const lad of LADDERS) {
+        for (const lad of ladders) {
           const width = 16;
           const halfW = width / 2;
           g.fillStyle = PALETTE.ladderCyan;
