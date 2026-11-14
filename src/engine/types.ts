@@ -74,7 +74,10 @@ export type AudioPreset =
   | 'entrega'
   | 'alarme'
   | 'superficie'
-  | 'patrulha';
+  | 'patrulha'
+  | 'tanquero'
+  | 'recarga'
+  | 'vento';
 
 export interface AudioService {
   tocar(preset: AudioPreset): void;

@@ -783,6 +783,54 @@ export class RetroAudioEngine implements AudioService {
           break;
         }
 
+        // ===== Presets do Asa Rasante =====
+        case 'tanquero': {
+          // Bipe duplo de aviso: tanque em aproximação
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(1240, t);
+          gain.gain.setValueAtTime(masterGain * 0.6, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.09);
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.type = 'square';
+          osc2.frequency.setValueAtTime(1240, t + 0.16);
+          gain2.gain.setValueAtTime(masterGain * 0.6, t + 0.16);
+          gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
+          osc2.connect(gain2);
+          gain2.connect(ctx.destination);
+          osc2.start(t + 0.16);
+          osc2.stop(t + 0.27);
+          break;
+        }
+
+        case 'recarga': {
+          // Tom subindo: reabastecimento em curso
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, t);
+          osc.frequency.exponentialRampToValueAtTime(880, t + 0.4);
+          gain.gain.setValueAtTime(masterGain * 0.4, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.44);
+          break;
+        }
+
+        case 'vento': {
+          // Ruído suave de vento
+          this.tocarRuido(0.3, 500, 900, 0.25);
+          break;
+        }
+
         case 'patrulha': {
           // Navio de patrulha: buzina de navio de guerra
           const osc = ctx.createOscillator();

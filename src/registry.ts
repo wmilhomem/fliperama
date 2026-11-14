@@ -19,6 +19,7 @@ import { gafieiraGameModule } from './games/gafieira';
 import { astroGameModule } from './games/astro';
 import { abissalGameModule } from './games/abissal';
 import { invasores84GameModule } from './games/invasores84';
+import { asaGameModule } from './games/asa';
 
 /**
  * REGISTRO CENTRAL DE JOGOS DO FLIPERAMA
@@ -42,6 +43,7 @@ export const JOGOS: GameModule[] = [
   astroGameModule,
   abissalGameModule,
   invasores84GameModule,
+  asaGameModule,
   modeloGameModule,
 ];
 
