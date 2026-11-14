@@ -4,75 +4,17 @@
  */
 
 import React from 'react';
-import { Play, Trophy, Lock, Sparkles } from 'lucide-react';
+import { Play, Trophy, Sparkles } from 'lucide-react';
 import { GameModule } from '../engine/types';
-import { UpcomingGame } from '../shared/types';
 import { previaDoJogo } from '../assets/previews';
 
 interface PlayableCardProps {
   jogo: GameModule;
   recorde: number;
   onJogar: (id: string) => void;
-  tipo: 'ativo';
 }
 
-interface UpcomingCardProps {
-  jogo: UpcomingGame;
-  tipo: 'emBreve';
-}
-
-type GameCardProps = PlayableCardProps | UpcomingCardProps;
-
-export const GameCard: React.FC<GameCardProps> = (props) => {
-  if (props.tipo === 'emBreve') {
-    const { jogo } = props;
-    return (
-      <div className="relative group rounded-xl p-4 bg-slate-900/60 border border-dashed border-slate-700/80 flex flex-col justify-between overflow-hidden shadow-lg opacity-85 hover:opacity-100 transition-all font-arcade">
-        {/* FACHA DECORATIVA ARCADE */}
-        <div className="absolute top-2 right-2 px-2 py-0.5 rounded bg-slate-800 text-[8px] text-amber-400 font-bold border border-amber-500/30 flex items-center gap-1">
-          <Lock className="w-2.5 h-2.5" />
-          EM BREVE
-        </div>
-
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span
-              className="w-3 h-3 rounded-sm opacity-50"
-              style={{ backgroundColor: jogo.corTema }}
-            />
-            <span className="text-[9px] uppercase tracking-wider text-slate-500">
-              {jogo.genero}
-            </span>
-          </div>
-
-          <h3 className="text-sm font-bold text-slate-300 tracking-wide mb-2 group-hover:text-amber-400 transition-colors">
-            {jogo.titulo}
-          </h3>
-
-          <p className="text-[10px] text-slate-400 leading-relaxed line-clamp-2 mb-4">
-            {jogo.descricao}
-          </p>
-        </div>
-
-        {/* GABINETE DESATIVADO */}
-        <div className="h-28 w-full bg-slate-950/80 rounded-lg border border-slate-800 flex flex-col items-center justify-center p-3 text-center mb-3">
-          <Lock className="w-6 h-6 text-slate-600 mb-2 group-hover:text-amber-400 transition-colors" />
-          <span className="text-[8px] text-slate-500">CABINE EM MANUTENÇÃO</span>
-          <span className="text-[7px] text-slate-600 mt-1">EM DESENVOLVIMENTO</span>
-        </div>
-
-        <button
-          disabled
-          className="w-full py-2 rounded-lg bg-slate-800/80 text-slate-500 text-[10px] font-bold cursor-not-allowed border border-slate-700/50 flex items-center justify-center gap-1.5"
-        >
-          <Lock className="w-3 h-3" />
-          BLOQUEADO
-        </button>
-      </div>
-    );
-  }
-
-  const { jogo, recorde, onJogar } = props;
+export const GameCard: React.FC<PlayableCardProps> = ({ jogo, recorde, onJogar }) => {
   const previa = previaDoJogo(jogo.id);
 
   return (

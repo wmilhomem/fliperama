@@ -4,7 +4,6 @@
  */
 
 import { GameModule } from './engine/types';
-import { UpcomingGame } from './shared/types';
 import { hannahGameModule } from './games/hannah';
 import { modeloGameModule } from './games/_modelo';
 import { tatuGameModule } from './games/tatu';
@@ -45,19 +44,6 @@ export const JOGOS: GameModule[] = [
   invasores84GameModule,
   asaGameModule,
   modeloGameModule,
-];
-
-/**
- * Jogos em desenvolvimento exibidos como cabines bloqueadas "EM BREVE" no catálogo.
- */
-export const JOGOS_EM_BREVE: UpcomingGame[] = [
-  {
-    id: 'pista_veloz',
-    titulo: 'Pista Veloz Turbo',
-    genero: 'Corrida Retrô',
-    descricao: 'Acelere em pistas sinuosas na rodovia noturna ultrapassando rivais antes que o cronômetro expire.',
-    corTema: '#F59E0B',
-  },
 ];
 
 export function obterJogoPorId(id: string): GameModule | undefined {

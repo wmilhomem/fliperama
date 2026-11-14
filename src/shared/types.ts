@@ -19,12 +19,3 @@ export interface GameScoreRecord {
   data: string; // ISO string ou formatada
   nome: string;
 }
-
-export interface UpcomingGame {
-  id: string;
-  titulo: string;
-  genero: string;
-  descricao: string;
-  corTema: string;
-  dataPrevista?: string;
-}

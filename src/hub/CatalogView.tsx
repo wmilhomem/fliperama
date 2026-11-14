@@ -6,19 +6,16 @@
 import React from 'react';
 import { GameCard } from './GameCard';
 import { GameModule } from '../engine/types';
-import { UpcomingGame } from '../shared/types';
-import { Sparkles, Trophy } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 interface CatalogViewProps {
   jogos: GameModule[];
-  jogosEmBreve: UpcomingGame[];
   recordes: Record<string, number>;
   onSelecionarJogo: (id: string) => void;
 }
 
 export const CatalogView: React.FC<CatalogViewProps> = ({
   jogos,
-  jogosEmBreve,
   recordes,
   onSelecionarJogo,
 }) => {
@@ -58,35 +55,12 @@ export const CatalogView: React.FC<CatalogViewProps> = ({
           {jogos.map((jogo) => (
             <GameCard
               key={jogo.id}
-              tipo="ativo"
-              jogo={jogo}
-              recorde={recordes[jogo.id] || 0}
+              jogo={jogo}              recorde={recordes[jogo.id] || 0}
               onJogar={onSelecionarJogo}
             />
           ))}
         </div>
       </section>
-
-      {/* SEÇÃO DE JOGOS EM BREVE */}
-      {jogosEmBreve.length > 0 && (
-        <section className="mt-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-amber-500 rounded-sm" />
-              <h3 className="text-xs md:text-sm font-bold text-amber-400 tracking-wider">
-                PRÓXIMAS MÁQUINAS EM CONSTRUÇÃO
-              </h3>
-            </div>
-            <span className="text-[9px] text-slate-400">EM BREVE NO CATÁLOGO</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {jogosEmBreve.map((jogo) => (
-              <GameCard key={jogo.id} tipo="emBreve" jogo={jogo} />
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 };

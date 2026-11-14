@@ -6,7 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { GameRunner } from './engine/GameRunner';
 import { RetroStorageService } from './engine/storage';
-import { JOGOS, JOGOS_EM_BREVE, obterJogoPorId } from './registry';
+import { JOGOS, obterJogoPorId } from './registry';
 import { DEFAULT_PLATFORM_CONFIG, STORAGE_KEYS } from './shared/constants';
 import { PlatformConfig, PlatformView } from './shared/types';
 import { CatalogView } from './hub/CatalogView';
@@ -100,7 +100,6 @@ export default function App() {
             {visao === 'hub' && (
               <CatalogView
                 jogos={JOGOS}
-                jogosEmBreve={JOGOS_EM_BREVE}
                 recordes={recordes}
                 onSelecionarJogo={handleSelecionarJogo}
               />
