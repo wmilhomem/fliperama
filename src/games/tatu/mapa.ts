@@ -19,9 +19,9 @@
  *
  * O labirinto é original e simétrico na horizontal: a metade da esquerda é
  * espelhada para gerar a metade da direita (a toca central e as fileiras 10-14
- * e 27 são definidas por linhas completas, também palíndromos). Ao final, um
- * aparador simétrico remove sementes nos corredores mais cheios até restar
- * cerca de 240 itens para coletar.
+ * e 27 são definidas por linhas completas, também palíndromos). As sementes
+ * são distribuídas em cadência alternada afastada (uma a cada dois tiles,
+ * espelhada), totalizando cerca de 228 itens para coletar.
  */
 
 export const TILE_SIZE = 16;
@@ -81,17 +81,6 @@ const FILEIRAS_ESPECIAIS: Record<number, number[]> = {
   27: linhaSimetrica([1, 1, 1, 1, 2, 1, 1, 1, 1], [2, 1, 1, 1, 2, 2, 1, 1, 1, 2]), // ponte
 };
 
-/** Total de sementes + pimentas ainda presentes na matriz. */
-function contarItens(grid: number[][]): number {
-  let total = 0;
-  for (const linha of grid) {
-    for (const tile of linha) {
-      if (tile === 2 || tile === 3) total++;
-    }
-  }
-  return total;
-}
-
 export function criarMatrizLabirinto(): number[][] {
   const matriz: number[][] = HALF_MAZE_TEMPLATE.map((half, r) => {
     const especial = FILEIRAS_ESPECIAIS[r];
@@ -103,21 +92,13 @@ export function criarMatrizLabirinto(): number[][] {
     return linha;
   });
 
-  // Apara sementes simetricamente nos corredores mais cheios até restarem ~240 itens
-  const linhasPorDensidade = matriz
-    .map((linha, r) => ({ r, sementes: linha.filter((t) => t === 2).length }))
-    .sort((a, b) => b.sementes - a.sementes);
-
-  while (contarItens(matriz) > 240) {
-    for (const { r } of linhasPorDensidade) {
-      if (contarItens(matriz) <= 240) break;
-      for (let c = 0; c < 14; c++) {
-        if (matriz[r][c] === 2 && matriz[r][MAZE_COLS - 1 - c] === 2) {
-          matriz[r][c] = 0;
-          matriz[r][MAZE_COLS - 1 - c] = 0;
-          break;
-        }
-      }
+  // Distribui as sementes em cadência afastada e espelhada: uma a cada dois
+  // tiles, usando min(c, 27-c) como fase (o labirinto permanece simétrico).
+  // Nenhuma semente fica encostada na outra e os corredores ficam igualmente
+  // pontuados (~228 itens), sem aglomerados.
+  for (let r = 0; r < MAZE_ROWS; r++) {
+    for (let c = 0; c < MAZE_COLS; c++) {
+      if (matriz[r][c] === 2 && Math.min(c, MAZE_COLS - 1 - c) % 2 !== r % 2) matriz[r][c] = 0;
     }
   }
 
