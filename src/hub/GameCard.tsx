@@ -19,6 +19,7 @@ export const GameCard: React.FC<PlayableCardProps> = ({ jogo, recorde, onJogar }
 
   return (
     <div
+      id={`jogo-card-${jogo.id}`}
       className="relative group rounded-xl p-4 bg-gradient-to-b from-slate-900 via-slate-900/90 to-slate-950 border-2 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_25px_rgba(239,68,68,0.3)] flex flex-col justify-between font-arcade"
       style={{
         borderColor: `${jogo.corTema}aa`,

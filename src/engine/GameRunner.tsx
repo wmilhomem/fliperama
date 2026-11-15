@@ -447,6 +447,8 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
   const rotuloAcao = modulo.controleTouch?.acaoRotulo ?? 'ATIRAR';
   const rotuloAcao2 = modulo.controleTouch?.acao2Rotulo ?? 'B';
   const temVertical = Boolean(modulo.controleTouch?.vertical);
+  const captionAcao = modulo.controleTouch?.acaoRotulo ?? 'PULAR';
+  const captionAcao2 = modulo.controleTouch?.acao2Rotulo ?? 'GOLPE';
   const dicaDoJogo = modulo.controleTouch?.dica ?? `Arraste para mover. Toque em ${rotuloAcao}.`;
 
   const botaoAcao = (
@@ -481,7 +483,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
       className="flex flex-col items-center justify-center shrink-0 w-14 h-14 rounded-full bg-amber-600 active:bg-amber-500 active:scale-95 border-2 border-amber-400 shadow-[0_4px_0_#78350f] active:shadow-none transition-all touch-none select-none"
       style={{ WebkitTouchCallout: 'none', overscrollBehavior: 'none' }}
     >
-      {rotuloAcao2 === 'DINAMITE' ? (
+      {rotuloAcao2 === 'DINAMITE' || rotuloAcao2 === 'BOMBA' ? (
         <Bomb className="w-5 h-5 text-white" />
       ) : (
         <Rocket className="w-5 h-5 text-white" />
@@ -851,7 +853,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
               >
                 B
               </button>
-              <span className="text-[8px] text-slate-400 mt-1">GOLPE</span>
+              <span className="text-[8px] text-slate-400 mt-1">{captionAcao2}</span>
             </div>
 
             {/* Botão A (Pular / Ação Primária) */}
@@ -865,7 +867,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
               >
                 A
               </button>
-              <span className="text-[8px] text-red-400 mt-1 font-bold">PULAR</span>
+              <span className="text-[8px] text-red-400 mt-1 font-bold">{captionAcao}</span>
             </div>
           </div>
         </footer>

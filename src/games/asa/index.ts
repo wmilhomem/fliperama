@@ -117,6 +117,7 @@ export const asaGameModule: GameModule = {
     padrao: 'arrastar',
     esquemas: ['arrastar', 'classico'],
     acaoRotulo: 'ATIRAR',
+    acao2Rotulo: 'BOMBA',
     vertical: true,
   },
   instrucoes: {
@@ -127,7 +128,7 @@ export const asaGameModule: GameModule = {
       'Cima: acelera (mundo desce mais rápido) · Baixo: freia',
       'Espaço / Botão A: canhão',
       'Arraste na faixa para manobrar; ATIRAR dispara; ▲ acelera e ▼ freia',
-      'X / Botão B: bomba (máx. 1 no ar, 10 por setor)',
+      'BOMBA / X / Botão B: bomba (máx. 1 no ar, 10 por setor)',
       'P: pausa · R: reiniciar · M: som · ESC: hub',
     ],
     pontos: [

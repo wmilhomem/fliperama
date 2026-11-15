@@ -8,6 +8,7 @@ export const ALTURA = 560;
 export const HUD_ALTURA = 48;
 
 export const LAND_Y = 148;
+export const LAND_BAIXO_Y = 436;
 export const TERRA_TOPO = 126;
 export const TERRA_BASE = 168;
 export const AGUA_TOPO = 168;

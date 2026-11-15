@@ -17,6 +17,7 @@ import {
   DURACAO_INVULNERAVEL,
   DURACAO_TRANSICAO,
   FILEIRAS_Y,
+  LAND_BAIXO_Y,
   LAND_Y,
   LARGURA,
   PONTOS_PEIXE,
@@ -95,12 +96,6 @@ export const cheiaGameModule: GameModule = {
   corTema: '#F472B6',
   largura: LARGURA,
   altura: ALTURA,
-  controleTouch: {
-    padrao: 'arrastar',
-    esquemas: ['arrastar', 'classico'],
-    quatroVias: true,
-    dica: 'Arraste na faixa em qualquer direção. Deslize para cima/baixo troca de fileira.',
-  },
   instrucoes: {
     historia:
       'O rio está enchendo e Tiquinho, um menino ribeirinho de chapéu de palha, precisa construir sua casa de palafita pulando entre vitórias-régias gigantes e recolhendo tábuas. A onça e as aves da beira do rio não vão facilitar.',
@@ -372,14 +367,14 @@ export const cheiaGameModule: GameModule = {
     }
 
     function concluirPulo(destino: number): void {
-      if (destino === -1) {
-        jogador.fileira = -1;
-        jogador.y = LAND_Y;
+      if (destino === -1 || destino === TOTAL_FILEIRAS) {
+        jogador.fileira = destino;
+        jogador.y = destino === -1 ? LAND_Y : LAND_BAIXO_Y;
         jogador.estado = 'parado';
         jogador.plataformaId = null;
         resetarFlores(plataformas);
         ctx.audio.tocarTom(520, 'sine', 0.1, 0.14);
-        if (jogadorPodeEntrar(jogador, tabuas)) {
+        if (destino === -1 && jogadorPodeEntrar(jogador, tabuas)) {
           concluirCasa();
         }
         return;
@@ -423,7 +418,7 @@ export const cheiaGameModule: GameModule = {
         return;
       }
 
-      if (jogador.fileira === -1) {
+      if (jogador.fileira === -1 || jogador.fileira === TOTAL_FILEIRAS) {
         moverJogador(jogador, input, dt, 14, LARGURA - 14);
       } else {
         if (!plataformaAtual) {
@@ -474,7 +469,12 @@ export const cheiaGameModule: GameModule = {
           return;
         }
 
-        iniciarQuedaAgua('agua');
+        if (jogador.fileira === TOTAL_FILEIRAS - 1) {
+          iniciarPulo(jogador, TOTAL_FILEIRAS, LAND_BAIXO_Y);
+          ctx.audio.tocar('pulo');
+          return;
+        }
+
         return;
       }
 

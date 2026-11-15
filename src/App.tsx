@@ -65,7 +65,6 @@ export default function App() {
   };
 
   const handleVoltarAoHub = () => {
-    setJogoAtivoId(null);
     setVisao('hub');
     atualizarRecordes();
   };
@@ -99,6 +98,7 @@ export default function App() {
                 jogos={JOGOS}
                 recordes={recordes}
                 onSelecionarJogo={handleSelecionarJogo}
+                focoJogoId={jogoAtivoId}
               />
             )}
 

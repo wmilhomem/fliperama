@@ -89,13 +89,6 @@ export const selvaGameModule: GameModule = {
   corTema: '#22C55E',
   largura: LARGURA,
   altura: ALTURA,
-  controleTouch: {
-    padrao: 'arrastar',
-    esquemas: ['arrastar', 'classico'],
-    acaoRotulo: 'PULAR',
-    quatroVias: true,
-    dica: 'Arraste nas 4 direções. Toque em PULAR.',
-  },
   instrucoes: {
     historia:
       'Dudu encontrou um mapa antigo apontando para 32 tesouros escondidos na floresta. Ele tem 20 minutos para atravessar 120 telas da selva, descendo aos túneis quando necessário, sem cair nas armadilhas do caminho.',

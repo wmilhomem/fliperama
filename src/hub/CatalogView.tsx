@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { GameCard } from './GameCard';
 import { GameModule } from '../engine/types';
 import { Sparkles } from 'lucide-react';
@@ -12,13 +12,23 @@ interface CatalogViewProps {
   jogos: GameModule[];
   recordes: Record<string, number>;
   onSelecionarJogo: (id: string) => void;
+  focoJogoId?: string | null;
 }
 
 export const CatalogView: React.FC<CatalogViewProps> = ({
   jogos,
   recordes,
   onSelecionarJogo,
+  focoJogoId = null,
 }) => {
+  useEffect(() => {
+    if (!focoJogoId) return;
+    const ancora = document.getElementById(`jogo-card-${focoJogoId}`);
+    if (ancora) {
+      requestAnimationFrame(() => ancora.scrollIntoView({ block: 'center' }));
+    }
+  }, [focoJogoId]);
+
   return (
     <div className="w-full max-w-5xl flex flex-col gap-6 font-arcade">
       {/* BANNER RETRÔ DE BOAS-VINDAS */}
