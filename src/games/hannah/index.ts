@@ -187,12 +187,6 @@ export const hannahGameModule: GameModule = {
   corTema: '#14B8A6',
   largura: LARGURA,
   altura: ALTURA,
-  controleTouch: {
-    padrao: 'arrastar',
-    esquemas: ['arrastar', 'classico'],
-    acaoRotulo: 'PULAR',
-    dica: 'Arraste para os lados. Toque em PULAR.',
-  },
   instrucoes: {
     historia:
       'O Grotão, um gorila gigante da construção, sequestrou a arquiteta Hannah e a levou para o topo de uma inacabada estrutura de aço. Zeca, um pedreiro de capacete amarelo, precisa subir de tela em tela, desviar de barris, bolas de fogo, caixas de massa, molas e travas, e salvar Hannah antes que o Grotão fuja com ela.',
@@ -805,6 +799,11 @@ export const hannahGameModule: GameModule = {
           }
         }
 
+        if (!vigia) {
+          // No ar: corta o embalo horizontal para o barril cair quase
+          // vertical sobre a viga de baixo (sem "escapar" pelas laterais)
+          b.vx *= 0.12;
+        }
         // Esteira empurra o barril
         if (vigia?.esteira) {
           b.x += (vigia.sentidoEsteira ?? 1) * 45 * dt;
