@@ -80,12 +80,18 @@ export const auroraGameModule: GameModule = {
   corTema: '#8B5CF6',
   largura: LARGURA,
   altura: ALTURA,
+  controleTouch: {
+    padrao: 'arrastar',
+    esquemas: ['arrastar', 'classico'],
+    acaoRotulo: 'FOGO',
+  },
   instrucoes: {
     historia:
       'A aurora boreal cobre a última base polar habitada. Aves fantasmas descem das montanhas, se dividem em enxames e mergulham contra o canhão. Resista às ondas e derrube a Coruja Gigante a cada cinco ondas.',
     controles: [
       '◄ ► / A D / D-Pad: mover o canhão',
       'Espaço / Botão A: atirar',
+      'Arraste na faixa e toque em FOGO',
       'P: pausar • R: reiniciar • M: som • ESC: voltar ao hub',
     ],
     pontos: [

@@ -14,6 +14,7 @@ import { centroRio, limitarXNaSecao } from './rio';
 import { clamp } from './semente';
 import { Nave, SecaoRio } from './tipos';
 import { InputState } from '../../engine/types';
+import { lerControles } from '../../shared/controles';
 
 export function criarNave(secao: SecaoRio): Nave {
   return {
@@ -48,7 +49,11 @@ export function atualizarNave(
   nave.acelerando = input.cima && !input.baixo;
   nave.desacelerando = input.baixo && !input.cima;
 
-  const direcao = (input.direita ? 1 : 0) - (input.esquerda ? 1 : 0);
+  const sens = lerControles().sensibilidade;
+  const direcao =
+    input.arrastando && input.arrasteDX !== 0
+      ? clamp((input.arrasteDX * sens) / 26, -1, 1)
+      : (input.direita ? 1 : 0) - (input.esquerda ? 1 : 0);
   const alvoInclinacao = direcao * 0.19;
 
   nave.inclinacao += (alvoInclinacao - nave.inclinacao) * Math.min(1, dt * 11);

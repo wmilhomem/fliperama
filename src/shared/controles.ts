@@ -22,8 +22,8 @@ export interface ControlesConfig {
   /** Inverte o lado da faixa e do botão ATIRAR. */
   canhoto: boolean;
   vibracao: boolean;
-  /** O jogador já viu a dica de primeiro uso? */
-  dicaVista: boolean;
+  /** Dica de 3 segundos já vista por jogo (etapa por jogo). */
+  dicaVista: Record<string, boolean>;
   /** Sobrepõe o diagnóstico de toque na tela do jogo. */
   diagnostico: boolean;
 }
@@ -36,7 +36,7 @@ export const PADRAO_CONTROLES: ControlesConfig = {
   sensibilidade: 1,
   canhoto: false,
   vibracao: true,
-  dicaVista: false,
+  dicaVista: {},
   diagnostico: false,
 };
 
@@ -60,13 +60,19 @@ export function lerControles(): ControlesConfig {
       ...PADRAO_CONTROLES,
       ...(parsed as Partial<ControlesConfig>),
       esquemas: { ...PADRAO_CONTROLES.esquemas, ...(parsed?.esquemas ?? {}) },
+      // Migração: dicaVista booleano antigo → mapa por jogo
+      dicaVista:
+        parsed?.dicaVista === true
+          ? { invasores84: true }
+          : typeof parsed?.dicaVista === 'object' && parsed?.dicaVista !== null
+            ? { ...(parsed.dicaVista as Record<string, boolean>) }
+            : {},
       sensibilidade: Math.min(2, Math.max(0.5, Number(parsed?.sensibilidade) || 1)),
       modoTiro: ['manual', 'toque', 'auto'].includes(parsed?.modoTiro)
         ? parsed.modoTiro
         : 'manual',
       canhoto: !!parsed?.canhoto,
       vibracao: parsed?.vibracao !== false,
-      dicaVista: !!parsed?.dicaVista,
       diagnostico: !!parsed?.diagnostico,
     };
   } catch {
@@ -116,6 +122,15 @@ export function aoPedirDicaDeToque(fn: () => void): () => void {
 /** Pede para reabrir a dica de 3 segundos do piloto "arrastar". */
 export function pedirDicaDeToque(): void {
   for (const fn of ouvintesDica) fn();
+}
+
+export function dicaVistaDoJogo(jogoId: string): boolean {
+  return !!lerControles().dicaVista[jogoId];
+}
+
+export function marcarDicaVista(jogoId: string): ControlesConfig {
+  const atual = lerControles();
+  return salvarControles({ dicaVista: { ...atual.dicaVista, [jogoId]: true } });
 }
 
 export function esquemaDoJogo(jogoId: string, padrao: EsquemaTouch): EsquemaTouch {

@@ -84,6 +84,12 @@ export const raliGameModule: GameModule = {
   corTema: '#F97316',
   largura: LARGURA,
   altura: ALTURA,
+  controleTouch: {
+    padrao: 'arrastar',
+    esquemas: ['arrastar', 'classico'],
+    acaoRotulo: 'ACELERAR',
+    vertical: true,
+  },
   instrucoes: {
     historia:
       'Você pilota um carro de rali em uma estrada interminável. Cada dia tem 90 segundos e uma meta de ultrapassagens. Sobreviva ao tráfego, ao mau tempo e à escuridão para chegar o mais longe possível.',
@@ -91,6 +97,7 @@ export const raliGameModule: GameModule = {
       '◄ ► / A D / D-Pad: desviar',
       '▲ / W / Espaço / Botão A: acelerar',
       '▼ / S / D-Pad baixo: frear',
+      'Arraste na faixa para desviar; botão ACELERAR para acelerar; ▲▼ aceleram/freiam',
       'P: pausar • R: reiniciar • M: som • ESC: voltar ao hub',
     ],
     pontos: [

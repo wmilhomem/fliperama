@@ -156,7 +156,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <h3 className="text-xs font-bold text-white flex items-center gap-1.5 mb-3">
             <Hand className="w-4 h-4 text-cyan-400" />
             CONTROLES POR TOQUE
-            <span className="text-[8px] text-slate-500 font-normal ml-1">Invasores Cósmicos 84</span>
+            <span className="text-[8px] text-slate-500 font-normal ml-1">Jogos com piloto tátil</span>
           </h3>
 
           {/* Sensibilidade */}

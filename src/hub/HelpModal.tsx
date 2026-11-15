@@ -135,7 +135,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ jogo, onFechar }) => {
               CONTROLE DE TOQUE
             </h3>
             <p className="text-[8px] text-slate-400 mb-2">
-              Arraste na faixa para mover e toque em ATIRAR. Reserva: botões na tela.
+              Arraste na faixa para mover e toque em {jogo.controleTouch.acaoRotulo ?? 'ATIRAR'}. Reserva: botões na tela.
             </p>
             <div className="grid grid-cols-2 gap-2">
               <button

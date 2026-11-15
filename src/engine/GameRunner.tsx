@@ -20,6 +20,9 @@ import {
   Crosshair,
   MoveHorizontal,
   Hand,
+  Gauge,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { GameModule, GameInstance, EngineContext, InputState } from './types';
 import { UnifiedInputManager } from './input';
@@ -36,9 +39,10 @@ import {
   EsquemaTouch,
   aoMudarEsquema,
   aoPedirDicaDeToque,
+  dicaVistaDoJogo,
   esquemaDoJogo,
   lerControles,
-  salvarControles,
+  marcarDicaVista,
   salvarEsquema,
 } from '../shared/controles';
 import { GestureInputManager } from './gestures';
@@ -153,13 +157,13 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
     }
   }, [exibirArrastar, modulo]);
 
-  // Dica de primeiro uso: uma vez por aparelho, apenas para quem tem controleTouch
+  // Dica de primeiro uso: uma vez por aparelho e por jogo com controleTouch
   useEffect(() => {
-    if (!exibirArrastar) return;
-    if (lerControles().dicaVista) return;
+    if (!exibirArrastar || !modulo.controleTouch) return;
+    if (dicaVistaDoJogo(modulo.id)) return;
     setMostrarDica(true);
-    salvarControles({ dicaVista: true });
-  }, [exibirArrastar]);
+    marcarDicaVista(modulo.id);
+  }, [exibirArrastar, modulo.id, modulo.controleTouch]);
 
   // Auto-esconder a dica após 3 segundos
   useEffect(() => {
@@ -431,18 +435,58 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
 
   const limparFaixaToque = () => setFaixaToqueX(null);
 
-  const botaoAtirar = (
+  const rotuloAcao = modulo.controleTouch?.acaoRotulo ?? 'ATIRAR';
+  const temVertical = Boolean(modulo.controleTouch?.vertical);
+
+  const botaoAcao = (
     <button
       ref={botaoAtirarRef}
       type="button"
-      aria-label="Atirar"
+      aria-label={rotuloAcao}
       className="flex flex-col items-center justify-center shrink-0 w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-full bg-red-600 active:bg-red-500 active:scale-95 border-2 border-red-400 shadow-[0_5px_0_#7f1d1d] active:shadow-none transition-all touch-none select-none"
       style={{ WebkitTouchCallout: 'none', overscrollBehavior: 'none' }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <Crosshair className="w-6 h-6 text-white" />
-      <span className="text-[8px] font-bold text-white mt-0.5 tracking-widest">ATIRAR</span>
+      {rotuloAcao === 'ACELERAR' ? (
+        <Gauge className="w-6 h-6 text-white" />
+      ) : (
+        <Crosshair className="w-6 h-6 text-white" />
+      )}
+      <span className="text-[8px] font-bold text-white mt-0.5 tracking-widest">{rotuloAcao}</span>
     </button>
+  );
+
+  const botoesVerticais = (
+    <div className="flex flex-col gap-1.5 shrink-0">
+      <button
+        type="button"
+        aria-label="Acelerar"
+        onTouchStart={handleTouchStart('cima')}
+        onTouchEnd={handleTouchEnd('cima')}
+        onMouseDown={handleTouchStart('cima')}
+        onMouseUp={handleTouchEnd('cima')}
+        onContextMenu={(e) => e.preventDefault()}
+        className="w-14 h-14 rounded-xl bg-emerald-700/80 active:bg-emerald-500 border border-emerald-500/60 text-emerald-200 flex flex-col items-center justify-center touch-none select-none"
+        style={{ WebkitTouchCallout: 'none', overscrollBehavior: 'none' }}
+      >
+        <ChevronUp className="w-5 h-5" />
+        <span className="text-[6px] font-bold">ACELERAR</span>
+      </button>
+      <button
+        type="button"
+        aria-label="Frear"
+        onTouchStart={handleTouchStart('baixo')}
+        onTouchEnd={handleTouchEnd('baixo')}
+        onMouseDown={handleTouchStart('baixo')}
+        onMouseUp={handleTouchEnd('baixo')}
+        onContextMenu={(e) => e.preventDefault()}
+        className="w-14 h-14 rounded-xl bg-amber-700/80 active:bg-amber-500 border border-amber-500/60 text-amber-200 flex flex-col items-center justify-center touch-none select-none"
+        style={{ WebkitTouchCallout: 'none', overscrollBehavior: 'none' }}
+      >
+        <ChevronDown className="w-5 h-5" />
+        <span className="text-[6px] font-bold">FREAR</span>
+      </button>
+    </div>
   );
 
   return (
@@ -552,7 +596,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
             </div>
           </div>
           <p className="text-[11px] text-white bg-black/75 border border-cyan-500/50 rounded-lg px-4 py-2 tracking-wide">
-            Arraste para mover. Toque em Atirar.
+            Arraste para mover. Toque em {rotuloAcao}.
           </p>
         </div>
       )}
@@ -640,10 +684,11 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
         )}
       </main>
 
-      {/* CONTROLES POR GESTOS — piloto "arrastar" (Invasores Cósmicos 84) */}
+      {/* CONTROLES POR GESTOS — piloto "arrastar" (exclusivo para mobile) */}
       {exibirArrastar && (
         <footer className="w-full max-w-3xl flex items-center gap-4 mt-2 px-6 py-2 z-20">
-          {canhotoAtivo && botaoAtirar}
+          {canhotoAtivo && botaoAcao}
+          {canhotoAtivo && temVertical && botoesVerticais}
 
           {/* Faixa de arrasto */}
           <div
@@ -674,7 +719,8 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
             )}
           </div>
 
-          {!canhotoAtivo && botaoAtirar}
+          {!canhotoAtivo && temVertical && botoesVerticais}
+          {!canhotoAtivo && botaoAcao}
         </footer>
       )}
 

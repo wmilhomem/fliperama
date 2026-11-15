@@ -74,7 +74,7 @@ O projeto usa `vite-plugin-pwa` para gerar o manifest e o service worker. Para o
 
 ## Teste manual — piloto de controles por gestos ("arrastar")
 
-O jogo **Invasores Cósmicos 84** tem um piloto opcional de controle por gestos (o esquema "arrastar": arrastar na faixa move o canhão; botão ATIRAR dispara). **Todos os outros jogos continuam com o D-pad e os botões A/B de sempre.**
+O piloto de controles por gestos (o esquema "arrastar": arrastar na faixa move; o botão principal dispara a ação) está disponível — exclusivamente em aparelhos de toque — em **Invasores Cósmicos 84** (ATIRAR), **Defesa Aurora** (FOGO), **Asa Rasante** (ATIRAR + ▲▼ acelerar/frear), **Rali Estrada Sem Fim** (ACELERAR + ▲▼) e **Hidro Rio Abaixo** (ATIRAR + ▲▼). **Todos os outros jogos continuam com o D-pad e os botões A/B de sempre.**
 
 A chave de segurança do piloto fica em `NOVA_ENTRADA_TOUCH`, em `src/shared/constants.ts` (padrão: `true`). Com `false`, o Invasores volta a usar o controle clássico e nada do piloto atua.
 

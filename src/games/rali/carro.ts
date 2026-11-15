@@ -4,6 +4,7 @@
  */
 
 import { InputState } from '../../engine/types';
+import { lerControles } from '../../shared/controles';
 import { ALTURA, FAIXAS_X, JOGADOR_X_MAX, LARGURA } from './constantes';
 import { clamp } from './semente';
 import { Jogador } from './tipos';
@@ -25,7 +26,11 @@ export function atualizarJogador(
   velocidadeNormalizada: number,
   offroad: boolean
 ): void {
-  const direcao = (input.direita ? 1 : 0) - (input.esquerda ? 1 : 0);
+  const sens = lerControles().sensibilidade;
+  const direcao =
+    input.arrastando && input.arrasteDX !== 0
+      ? clamp((input.arrasteDX * sens) / 26, -1, 1)
+      : (input.direita ? 1 : 0) - (input.esquerda ? 1 : 0);
   const resposta = (3.4 + aderencia * 5.4) * (offroad ? 0.62 : 1);
   const forca = (1.15 + velocidadeNormalizada * 1.25) * (0.35 + velocidadeNormalizada * 0.65);
   const alvo = direcao * forca;

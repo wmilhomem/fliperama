@@ -4,6 +4,7 @@
  */
 
 import { AudioService, InputState } from '../../engine/types';
+import { lerControles } from '../../shared/controles';
 import {
   CALOR_MAX,
   CALOR_POR_TIRO,
@@ -43,15 +44,26 @@ export function atualizarCanhao(
   podeAtirar: boolean,
   audio: AudioService
 ): ResultadoCanhao {
-  let direcao = 0;
-  if (input.esquerda) direcao -= 1;
-  if (input.direita) direcao += 1;
+  const sens = lerControles().sensibilidade;
+  if (input.arrastando && input.arrasteDX !== 0) {
+    const delta = input.arrasteDX * sens;
+    const maxDelta = CANHAO_VELOCIDADE * dt * 2;
+    canhao.x = clamp(
+      canhao.x + Math.max(-maxDelta, Math.min(maxDelta, delta)),
+      CANHAO_MARGEM + 24,
+      LARGURA - CANHAO_MARGEM - 24
+    );
+  } else {
+    let direcao = 0;
+    if (input.esquerda) direcao -= 1;
+    if (input.direita) direcao += 1;
 
-  canhao.x = clamp(
-    canhao.x + direcao * CANHAO_VELOCIDADE * dt,
-    CANHAO_MARGEM + 24,
-    LARGURA - CANHAO_MARGEM - 24
-  );
+    canhao.x = clamp(
+      canhao.x + direcao * CANHAO_VELOCIDADE * dt,
+      CANHAO_MARGEM + 24,
+      LARGURA - CANHAO_MARGEM - 24
+    );
+  }
   canhao.recuo = Math.max(0, canhao.recuo - dt * 8);
   canhao.cooldown = Math.max(0, canhao.cooldown - dt);
 

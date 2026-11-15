@@ -4,6 +4,7 @@
  */
 
 import { EngineContext, GameInstance, GameModule, InputState } from '../../engine/types';
+import { lerControles } from '../../shared/controles';
 import {
   ALTURA,
   BOMBAS_POR_SETOR,
@@ -112,6 +113,12 @@ export const asaGameModule: GameModule = {
   corTema: COR_LARANJA_NEON,
   largura: LARGURA,
   altura: ALTURA,
+  controleTouch: {
+    padrao: 'arrastar',
+    esquemas: ['arrastar', 'classico'],
+    acaoRotulo: 'ATIRAR',
+    vertical: true,
+  },
   instrucoes: {
     historia:
       'A piloto Lia "Asa" Duarte comanda um caça leve de hélice-turbo em uma missão de longo alcance: destruir as centrais de radar que bloqueiam o corredor aéreo, do litoral à floresta. Não há pista de pouso no caminho. O combustível só vem de aviões-tanque em pleno voo.',
@@ -119,6 +126,7 @@ export const asaGameModule: GameModule = {
       'Setas Esquerda/Direita ou A/D: manobrar o avião',
       'Cima: acelera (mundo desce mais rápido) · Baixo: freia',
       'Espaço / Botão A: canhão',
+      'Arraste na faixa para manobrar; ATIRAR dispara; ▲ acelera e ▼ freia',
       'X / Botão B: bomba (máx. 1 no ar, 10 por setor)',
       'P: pausa · R: reiniciar · M: som · ESC: hub',
     ],
@@ -341,14 +349,22 @@ export const asaGameModule: GameModule = {
 
     function atualizarJogador(dt: number, input: InputState) {
       // Movimento lateral
+      const sens = lerControles().sensibilidade;
       let move = 0;
-      if (input.esquerda) move -= 1;
-      if (input.direita) move += 1;
+      if (input.arrastando && input.arrasteDX !== 0) {
+        const delta = input.arrasteDX * sens;
+        const maxDelta = 250 * dt * 2;
+        aviao.x += Math.max(-maxDelta, Math.min(maxDelta, delta));
+        move = Math.max(-1, Math.min(1, input.arrasteDX * 0.02));
+      } else {
+        if (input.esquerda) move -= 1;
+        if (input.direita) move += 1;
 
-      // Empurrão do vento
-      const ventoForça = empuxoVento(vento);
-      aviao.velocidadeX = move * 250 + ventoForça;
-      aviao.x += aviao.velocidadeX * dt;
+        // Empurrão do vento
+        const ventoForça = empuxoVento(vento);
+        aviao.velocidadeX = move * 250 + ventoForça;
+        aviao.x += aviao.velocidadeX * dt;
+      }
       aviao.x = Math.max(20, Math.min(LARGURA - 20, aviao.x));
 
       // Inclinação visual ao virar

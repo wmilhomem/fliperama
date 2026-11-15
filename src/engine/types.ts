@@ -255,6 +255,10 @@ export interface GameModule {
     padrao: 'arrastar' | 'classico';
     /** Esquemas oferecidos no seletor do jogo. */
     esquemas: Array<'arrastar' | 'classico'>;
+    /** Rótulo do botão principal (padrão "ATIRAR"). */
+    acaoRotulo?: string;
+    /** Exibe o par ▲▼ (acelerar/frear) para cima/baixo. */
+    vertical?: boolean;
   };
   criar(ctx: EngineContext): GameInstance;
 }

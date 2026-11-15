@@ -81,6 +81,12 @@ export const hidroGameModule: GameModule = {
   corTema: '#14B8A6',
   largura: 480,
   altura: 560,
+  controleTouch: {
+    padrao: 'arrastar',
+    esquemas: ['arrastar', 'classico'],
+    acaoRotulo: 'ATIRAR',
+    vertical: true,
+  },
   instrucoes: {
     historia:
       'Você pilota um hidroavião pelos rios da floresta. Desvie das margens, das pedras e dos troncos, enfrente lanchas, helicópteros e drones, e destrua a barreira ao fim de cada trecho. Fique de olho no combustível: tanques flutuantes podem salvar a viagem.',
@@ -89,6 +95,7 @@ export const hidroGameModule: GameModule = {
       '▲ / W / D-Pad cima: acelerar (gasta mais combustível)',
       '▼ / S / D-Pad baixo: desacelerar (economiza combustível)',
       'Espaço / Z / Botão A: atirar (até 2 tiros simultâneos)',
+      'Arraste na faixa para desviar; ATIRAR no botão vermelho; ▲▼ aceleram/freiam',
       'P: pausar • R: reiniciar • M: som • ESC: voltar ao hub',
     ],
     pontos: [
