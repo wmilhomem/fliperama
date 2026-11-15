@@ -50,14 +50,22 @@ export function atualizarNave(
   nave.desacelerando = input.baixo && !input.cima;
 
   const sens = lerControles().sensibilidade;
-  const direcao =
-    input.arrastando && input.arrasteDX !== 0
-      ? clamp((input.arrasteDX * sens) / 26, -1, 1)
-      : (input.direita ? 1 : 0) - (input.esquerda ? 1 : 0);
-  const alvoInclinacao = direcao * 0.19;
 
-  nave.inclinacao += (alvoInclinacao - nave.inclinacao) * Math.min(1, dt * 11);
-  nave.x += direcao * VELOCIDADE_NAVE * dt;
+  // Arraste 1:1 (mesmo princípio do Invasores Cósmicos 84): a lancha
+  // acompanha o dedo proporcionalmente ao deslocamento.
+  if (input.arrastando && input.arrasteDX !== 0) {
+    const delta = input.arrasteDX * sens;
+    const maxDelta = VELOCIDADE_NAVE * dt * 2;
+    nave.x += Math.max(-maxDelta, Math.min(maxDelta, delta));
+    const alvoArraste = clamp(input.arrasteDX * 0.004, -0.19, 0.19);
+    nave.inclinacao += (alvoArraste - nave.inclinacao) * Math.min(1, dt * 11);
+  } else {
+    const direcao = (input.direita ? 1 : 0) - (input.esquerda ? 1 : 0);
+    const alvoInclinacao = direcao * 0.19;
+
+    nave.inclinacao += (alvoInclinacao - nave.inclinacao) * Math.min(1, dt * 11);
+    nave.x += direcao * VELOCIDADE_NAVE * dt;
+  }
   nave.x = limitarXNaSecao(secao, progresso, nave.x, nave.raio + 1);
   nave.x = clamp(nave.x, nave.raio + 3, LARGURA_MUNDO - nave.raio - 3);
   nave.y = Y_NAVE;

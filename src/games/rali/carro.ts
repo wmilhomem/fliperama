@@ -27,10 +27,21 @@ export function atualizarJogador(
   offroad: boolean
 ): void {
   const sens = lerControles().sensibilidade;
-  const direcao =
-    input.arrastando && input.arrasteDX !== 0
-      ? clamp((input.arrasteDX * sens) / 26, -1, 1)
-      : (input.direita ? 1 : 0) - (input.esquerda ? 1 : 0);
+
+  // Arraste 1:1 (mesmo princípio do Invasores Cósmicos 84): o carro
+  // acompanha o dedo proporcionalmente ao deslocamento, sem suavização.
+  if (input.arrastando && input.arrasteDX !== 0) {
+    const delta = (input.arrasteDX * sens * 2.4) / LARGURA;
+    jogador.velocidadeLateral = 0;
+    jogador.x = clamp(jogador.x + delta, -JOGADOR_X_MAX, JOGADOR_X_MAX);
+
+    const inclinacaoArraste = clamp(delta * 60, -0.17, 0.17);
+    jogador.inclinacao += (inclinacaoArraste - jogador.inclinacao) * Math.min(1, dt * 16);
+    jogador.derrapagem = clamp(jogador.derrapagem - 2.2 * dt, 0, 1);
+    return;
+  }
+
+  const direcao = (input.direita ? 1 : 0) - (input.esquerda ? 1 : 0);
   const resposta = (3.4 + aderencia * 5.4) * (offroad ? 0.62 : 1);
   const forca = (1.15 + velocidadeNormalizada * 1.25) * (0.35 + velocidadeNormalizada * 0.65);
   const alvo = direcao * forca;
