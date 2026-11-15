@@ -4,6 +4,7 @@
  */
 
 import { InputState, SpriteUtils } from '../../engine/types';
+import { lerControles } from '../../shared/controles';
 import {
   ALTURA_PULO,
   CORES,
@@ -210,19 +211,35 @@ export function moverJogador(
   limiteDireita: number,
   velocidade = VELOCIDADE_ANDAR
 ): void {
-  let eixo = 0;
-  if (input.esquerda) eixo -= 1;
-  if (input.direita) eixo += 1;
+  const sens = lerControles().sensibilidade;
 
-  if (eixo !== 0) {
-    jogador.direcao = eixo > 0 ? 1 : -1;
-    jogador.x += eixo * velocidade * dt;
+  // Arraste horizontal proporcional (piloto tátil "arrastar")
+  if (input.arrastando && Math.abs(input.arrasteDX) >= Math.abs(input.arrasteDY)) {
+    const delta = Math.max(
+      -velocidade * dt * 2,
+      Math.min(velocidade * dt * 2, input.arrasteDX * sens)
+    );
+    jogador.x += delta;
+    jogador.direcao = delta >= 0 ? 1 : -1;
     jogador.tempoAnim += dt;
     if (jogador.estado !== 'pulando') {
       jogador.estado = 'andando';
     }
-  } else if (jogador.estado === 'andando') {
-    jogador.estado = 'parado';
+  } else {
+    let eixo = 0;
+    if (input.esquerda) eixo -= 1;
+    if (input.direita) eixo += 1;
+
+    if (eixo !== 0) {
+      jogador.direcao = eixo > 0 ? 1 : -1;
+      jogador.x += eixo * velocidade * dt;
+      jogador.tempoAnim += dt;
+      if (jogador.estado !== 'pulando') {
+        jogador.estado = 'andando';
+      }
+    } else if (jogador.estado === 'andando') {
+      jogador.estado = 'parado';
+    }
   }
 
   jogador.x = Math.max(limiteEsquerda, Math.min(limiteDireita, jogador.x));

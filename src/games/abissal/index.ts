@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -130,6 +130,13 @@ export const abissalGameModule: GameModule = {
   corTema: '#0EA5E9',
   largura: LARGURA,
   altura: ALTURA,
+  controleTouch: {
+    padrao: 'arrastar',
+    esquemas: ['arrastar', 'classico'],
+    acaoRotulo: 'ATIRAR',
+    quatroVias: true,
+    dica: 'Arraste na faixa em qualquer direção. Toque em ATIRAR.',
+  },
   instrucoes: {
     historia:
       'Depois de uma tempestade, mergulhadores ficaram à deriva num oceano cheio de predadores e submarinos piratas. Recolha os náufragos e leve-os ao navio de apoio "Pérola" antes que o oxigênio acabe.',

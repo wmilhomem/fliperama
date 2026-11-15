@@ -4,6 +4,7 @@
  */
 
 import { EngineContext, GameInstance, GameModule, InputState } from '../../engine/types';
+import { lerControles } from '../../shared/controles';
 import { desenharCasa, desenharIndicadorEntrada, jogadorPodeEntrar } from './casa';
 import { desenharCenario } from './cenario';
 import {
@@ -94,6 +95,12 @@ export const cheiaGameModule: GameModule = {
   corTema: '#F472B6',
   largura: LARGURA,
   altura: ALTURA,
+  controleTouch: {
+    padrao: 'arrastar',
+    esquemas: ['arrastar', 'classico'],
+    quatroVias: true,
+    dica: 'Arraste na faixa em qualquer direção. Deslize para cima/baixo troca de fileira.',
+  },
   instrucoes: {
     historia:
       'O rio está enchendo e Tiquinho, um menino ribeirinho de chapéu de palha, precisa construir sua casa de palafita pulando entre vitórias-régias gigantes e recolhendo tábuas. A onça e as aves da beira do rio não vão facilitar.',
@@ -122,6 +129,7 @@ export const cheiaGameModule: GameModule = {
     let casasConcluidas = 0;
     let bonusCasa = 0;
     let motivoQueda: MotivoDano = 'agua';
+    let puloCooldownTimer = 0;
     let jogador: Jogador = criarJogador();
     let plataformas: Plataforma[] = [];
     let gavioes: Gaviao[] = [];
@@ -427,7 +435,23 @@ export const cheiaGameModule: GameModule = {
         moverJogador(jogador, input, dt, min, max);
       }
 
-      if (input.cimaPressionada) {
+      puloCooldownTimer = Math.max(0, puloCooldownTimer - dt);
+      // Salto entre fileiras por gesto vertical (uma vez por gesto)
+      const limiarSalto = 26 * lerControles().sensibilidade;
+      let saltoCima = false;
+      let saltoBaixo = false;
+      if (
+        input.arrastando &&
+        puloCooldownTimer <= 0 &&
+        Math.abs(input.arrasteDY) > limiarSalto &&
+        Math.abs(input.arrasteDY) > Math.abs(input.arrasteDX)
+      ) {
+        if (input.arrasteDY < 0) saltoCima = true;
+        else saltoBaixo = true;
+        puloCooldownTimer = 0.45;
+      }
+
+      if (input.cimaPressionada || saltoCima) {
         if (jogador.fileira >= 0) {
           const destino = jogador.fileira - 1;
           iniciarPulo(jogador, destino, destino === -1 ? LAND_Y : FILEIRAS_Y[destino]);
@@ -436,7 +460,7 @@ export const cheiaGameModule: GameModule = {
         }
       }
 
-      if (input.baixoPressionada) {
+      if (input.baixoPressionada || saltoBaixo) {
         if (jogador.fileira === -1) {
           iniciarPulo(jogador, 0, FILEIRAS_Y[0]);
           ctx.audio.tocar('pulo');

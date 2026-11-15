@@ -11,6 +11,8 @@
  */
 
 import { AGUA_Y, ALTURA, FUNDO_Y, LARGURA, PALETA } from './constantes';
+import { InputState } from '../../engine/types';
+import { lerControles } from '../../shared/controles';
 
 export type EstadoSubmarino =
   | 'parado'
@@ -86,7 +88,7 @@ export function criarSubmarino(x: number, y: number): Submarino {
 /** Atualiza o movimento do submarino conforme o InputState. */
 export function atualizarSubmarino(
   sub: Submarino,
-  input: { esquerda: boolean; direita: boolean; cima: boolean; baixo: boolean },
+  input: InputState,
   dt: number
 ): void {
   sub.tempoEstado += dt;
@@ -100,12 +102,20 @@ export function atualizarSubmarino(
     return;
   }
 
+  const sens = lerControles().sensibilidade;
   let mx = 0;
   let my = 0;
-  if (input.esquerda) mx -= 1;
-  if (input.direita) mx += 1;
-  if (input.cima) my -= 1;
-  if (input.baixo) my += 1;
+  if (input.arrastando) {
+    const dx = input.arrasteDX * sens;
+    const dy = input.arrasteDY * sens;
+    mx = Math.max(-1, Math.min(1, dx / 18));
+    my = Math.max(-1, Math.min(1, dy / 18));
+  } else {
+    if (input.esquerda) mx -= 1;
+    if (input.direita) mx += 1;
+    if (input.cima) my -= 1;
+    if (input.baixo) my += 1;
+  }
 
   if (mx !== 0) {
     sub.vx += mx * ACELERACAO * dt;

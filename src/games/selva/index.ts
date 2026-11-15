@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -35,6 +35,7 @@ import {
   desenharExplorador,
 } from './explorador';
 import { gerarMundo } from './gerador';
+import { lerControles } from '../../shared/controles';
 import { desenharHUD, desenharResultado, desenharTituloSelva } from './hud';
 import {
   atualizarObstaculos,
@@ -88,6 +89,13 @@ export const selvaGameModule: GameModule = {
   corTema: '#22C55E',
   largura: LARGURA,
   altura: ALTURA,
+  controleTouch: {
+    padrao: 'arrastar',
+    esquemas: ['arrastar', 'classico'],
+    acaoRotulo: 'PULAR',
+    quatroVias: true,
+    dica: 'Arraste nas 4 direções. Toque em PULAR.',
+  },
   instrucoes: {
     historia:
       'Dudu encontrou um mapa antigo apontando para 32 tesouros escondidos na floresta. Ele tem 20 minutos para atravessar 120 telas da selva, descendo aos túneis quando necessário, sem cair nas armadilhas do caminho.',
@@ -355,8 +363,13 @@ export const selvaGameModule: GameModule = {
       jogador.x = escada;
       let direcao = 0;
 
-      if (input.cima) direcao -= 1;
-      if (input.baixo) direcao += 1;
+      const sensLadder = lerControles().sensibilidade;
+      if (input.arrastando && Math.abs(input.arrasteDY) > Math.abs(input.arrasteDX)) {
+        direcao = Math.max(-1, Math.min(1, (input.arrasteDY * sensLadder) / 26));
+      } else {
+        if (input.cima) direcao -= 1;
+        if (input.baixo) direcao += 1;
+      }
 
       jogador.y = clamp(jogador.y + direcao * VELOCIDADE_ESCADA * dt, TRILHA_Y, SUBSOLO_CHAO);
 
@@ -376,13 +389,13 @@ export const selvaGameModule: GameModule = {
         return;
       }
 
-      if (jogador.y <= TRILHA_Y && input.cima) {
+      if (jogador.y <= TRILHA_Y && direcao < 0) {
         jogador.y = TRILHA_Y;
         jogador.emEscada = false;
         jogador.noChao = true;
         jogador.vy = 0;
         escadaAtual = null;
-      } else if (jogador.y >= SUBSOLO_CHAO && input.baixo) {
+      } else if (jogador.y >= SUBSOLO_CHAO && direcao > 0) {
         jogador.y = SUBSOLO_CHAO;
         jogador.emEscada = false;
         jogador.noChao = true;

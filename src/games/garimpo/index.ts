@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -80,6 +80,14 @@ export const garimpoGameModule: GameModule = {
   corTema: '#22D3EE',
   largura: 480,
   altura: 560,
+  controleTouch: {
+    padrao: 'arrastar',
+    esquemas: ['arrastar', 'classico'],
+    acaoRotulo: 'ATIRAR',
+    acao2Rotulo: 'SALTAR',
+    quatroVias: true,
+    dica: 'Arraste em qualquer direção: horizontal gira, cima acelera. ATIRAR atira, SALTAR salta.',
+  },
   instrucoes: {
     historia:
       'Você é um garimpeiro espacial preso em um cinturão de asteroides. Quebre as rochas, colete cristais de energia e enfrente os piratas que cercam a região. Cada fase traz mais pedras — e mais perigo.',

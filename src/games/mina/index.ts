@@ -1,4 +1,4 @@
-import { EngineContext, GameInstance, GameModule, InputState } from '../../engine/types';
+﻿import { EngineContext, GameInstance, GameModule, InputState } from '../../engine/types';
 import { desenharCristal, desenharHeroina, desenharLampada, desenharMinerador } from './arte';
 import { atualizarCamera, criarCamera } from './camera';
 import { desenharFundo, desenharDecoracaoSalas, desenharTiles, desenharTrilhos } from './cenario';
@@ -103,6 +103,14 @@ export const minaGameModule: GameModule = {
   corTema: '#FBBF24',
   largura: LARGURA,
   altura: ALTURA,
+  controleTouch: {
+    padrao: 'arrastar',
+    esquemas: ['arrastar', 'classico'],
+    acaoRotulo: 'ATIRAR',
+    acao2Rotulo: 'DINAMITE',
+    quatroVias: true,
+    dica: 'Arraste em qualquer direção. ATIRAR atira, DINAMITE planta.',
+  },
   instrucoes: {
     historia:
       'Rô é uma bombeira de resgate com uma mochila turbo. Um mineiro ficou preso nas galerias mais profundas, entre lava, água e criaturas. Use o laser de calor para abrir caminho, plante dinamite nas paredes frágeis e ilumine as salas escuras antes que a energia acabe.',

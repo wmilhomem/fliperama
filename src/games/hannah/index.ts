@@ -41,6 +41,7 @@ import {
   validarTela,
 } from './estrutura';
 import { MotorDeCenas } from './cenas';
+import { lerControles } from '../../shared/controles';
 import {
   desenharBolaFogo,
   desenharBolsa,
@@ -186,6 +187,12 @@ export const hannahGameModule: GameModule = {
   corTema: '#14B8A6',
   largura: LARGURA,
   altura: ALTURA,
+  controleTouch: {
+    padrao: 'arrastar',
+    esquemas: ['arrastar', 'classico'],
+    acaoRotulo: 'PULAR',
+    dica: 'Arraste para os lados. Toque em PULAR.',
+  },
   instrucoes: {
     historia:
       'O Grotão, um gorila gigante da construção, sequestrou a arquiteta Hannah e a levou para o topo de uma inacabada estrutura de aço. Zeca, um pedreiro de capacete amarelo, precisa subir de tela em tela, desviar de barris, bolas de fogo, caixas de massa, molas e travas, e salvar Hannah antes que o Grotão fuja com ela.',
@@ -558,18 +565,39 @@ export const hannahGameModule: GameModule = {
           j.ladderId = null;
         }
       } else {
-        // Andar
+        // Andar — teclado/D-pad ou arrasto horizontal
+        const sensH = lerControles().sensibilidade;
+        const deltaArrasto =
+          input.arrastando && Math.abs(input.arrasteDX) >= Math.abs(input.arrasteDY)
+            ? input.arrasteDX * sensH
+            : 0;
         let move = 0;
         if (input.esquerda) move -= 1;
         if (input.direita) move += 1;
-        j.vx = move * VELOCIDADE_JOGADOR;
-        j.x += j.vx * dt;
-        j.facing = move !== 0 ? (move > 0 ? 1 : -1) : j.facing;
-        if (move !== 0) {
+
+        if (deltaArrasto !== 0) {
+          const delta = Math.max(
+            -VELOCIDADE_JOGADOR * dt * 2,
+            Math.min(VELOCIDADE_JOGADOR * dt * 2, deltaArrasto)
+          );
+          j.x += delta;
+          j.vx = 0;
+          j.facing = delta >= 0 ? 1 : -1;
           j.walkTimer += dt;
           if (j.walkTimer > 0.12) {
             j.walkTimer = 0;
             j.walkFrame++;
+          }
+        } else {
+          j.vx = move * VELOCIDADE_JOGADOR;
+          j.x += j.vx * dt;
+          j.facing = move !== 0 ? (move > 0 ? 1 : -1) : j.facing;
+          if (move !== 0) {
+            j.walkTimer += dt;
+            if (j.walkTimer > 0.12) {
+              j.walkTimer = 0;
+              j.walkFrame++;
+            }
           }
         }
 

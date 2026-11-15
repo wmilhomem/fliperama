@@ -122,6 +122,7 @@ export const invasores84GameModule: GameModule = {
   controleTouch: {
     padrao: 'arrastar',
     esquemas: ['arrastar', 'classico'],
+    acaoRotulo: 'ATIRAR',
   },
   instrucoes: {
     historia:

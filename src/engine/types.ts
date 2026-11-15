@@ -259,6 +259,10 @@ export interface GameModule {
     esquemas: Array<'arrastar' | 'classico'>;
     /** Rótulo do botão principal; ausente = sem botão (ex.: labirinto). */
     acaoRotulo?: string;
+    /** Rótulo do botão secundário (Botão B); ausente = sem botão. */
+    acao2Rotulo?: string;
+    /** Faixa com ícones e trilho indicando as 4 direções. */
+    quatroVias?: boolean;
     /** Texto da dica de primeiro uso; padrão deriva de acaoRotulo. */
     dica?: string;
     /** Exibe o par ▲▼ (acelerar/frear) para cima/baixo. */

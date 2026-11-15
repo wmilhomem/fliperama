@@ -1,4 +1,5 @@
 import { InputState } from '../../engine/types';
+import { lerControles } from '../../shared/controles';
 import {
   ACELERACAO,
   ACELERACAO_PROPULSOR,
@@ -91,9 +92,14 @@ export function atualizarHeroina(
   const velocidade = heroina.emAgua ? VELOCIDADE_ANDAR * 0.62 : VELOCIDADE_ANDAR;
   const gravidade = heroina.emAgua ? GRAVIDADE_AGUA : GRAVIDADE;
 
+  const sens = lerControles().sensibilidade;
   let move = 0;
-  if (input.esquerda) move -= 1;
-  if (input.direita) move += 1;
+  if (input.arrastando && Math.abs(input.arrasteDX) >= Math.abs(input.arrasteDY)) {
+    move = Math.max(-1, Math.min(1, (input.arrasteDX * sens) / 26));
+  } else {
+    if (input.esquerda) move -= 1;
+    if (input.direita) move += 1;
+  }
 
   if (move !== 0) {
     heroina.olhando = move;
@@ -111,17 +117,28 @@ export function atualizarHeroina(
     heroina.vy += gravidade * dt;
   }
 
-  if (input.cima && heroina.energia > 0) {
+  const fatorPropulsor =
+    input.arrastando && input.arrasteDY < 0
+      ? Math.min(1, Math.max(0.3, (-input.arrasteDY * sens) / 12))
+      : 1;
+  const querPropulsor =
+    (input.cima && heroina.energia > 0) ||
+    (input.arrastando && input.arrasteDY < -2 && heroina.energia > 0);
+  if (querPropulsor) {
     const aceleracaoSubida = heroina.emAgua ? PROPULSOR_AGUA : ACELERACAO_PROPULSOR;
     const limiteSubida = heroina.emAgua ? SUBIDA_AGUA_MAX : SUBIDA_MAX;
-    heroina.vy -= aceleracaoSubida * dt;
+    heroina.vy -= aceleracaoSubida * fatorPropulsor * dt;
     heroina.vy = Math.max(-limiteSubida, heroina.vy);
-    heroina.energia = Math.max(0, heroina.energia - CONSUMO_PROPULSOR * dt);
+    heroina.energia = Math.max(0, heroina.energia - CONSUMO_PROPULSOR * fatorPropulsor * dt);
     heroina.propulsor = true;
   }
 
-  if (input.baixo) {
-    heroina.vy += (heroina.emAgua ? 180 : 380) * dt;
+  if (input.baixo || (input.arrastando && input.arrasteDY > 2)) {
+    const fatorDescida =
+      input.arrastando && input.arrasteDY > 2
+        ? Math.min(1.5, (input.arrasteDY * sens) / 12)
+        : 1;
+    heroina.vy += (heroina.emAgua ? 180 : 380) * fatorDescida * dt;
     heroina.vy = Math.min(MERGULHO_MAX, heroina.vy);
   }
 

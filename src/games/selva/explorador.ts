@@ -4,6 +4,7 @@
  */
 
 import { InputState, SpriteUtils } from '../../engine/types';
+import { lerControles } from '../../shared/controles';
 import {
   GRAVIDADE,
   VELOCIDADE_ANDAR,
@@ -139,7 +140,13 @@ export function atualizarMovimento(
     return { pulou: false, passo: false };
   }
 
-  const direcao = jogador.atordoado > 0 ? 0 : (input.direita ? 1 : 0) - (input.esquerda ? 1 : 0);
+  const sens = lerControles().sensibilidade;
+  const direcao =
+    jogador.atordoado > 0
+      ? 0
+      : input.arrastando && Math.abs(input.arrasteDX) >= Math.abs(input.arrasteDY)
+        ? Math.max(-1, Math.min(1, (input.arrasteDX * sens) / 26))
+        : (input.direita ? 1 : 0) - (input.esquerda ? 1 : 0);
   let pulou = false;
 
   if (direcao !== 0) {

@@ -20,6 +20,10 @@ import {
   Crosshair,
   MoveHorizontal,
   MoveVertical,
+  Move,
+  Rocket,
+  Bomb,
+  ArrowBigUpDash,
   Hand,
   Gauge,
   ChevronUp,
@@ -438,7 +442,10 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
   const limparFaixaToque = () => setFaixaToqueX(null);
 
   const temAcao = Boolean(modulo.controleTouch?.acaoRotulo);
+  const temAcao2 = Boolean(modulo.controleTouch?.acao2Rotulo);
+  const quatroVias = Boolean(modulo.controleTouch?.quatroVias);
   const rotuloAcao = modulo.controleTouch?.acaoRotulo ?? 'ATIRAR';
+  const rotuloAcao2 = modulo.controleTouch?.acao2Rotulo ?? 'B';
   const temVertical = Boolean(modulo.controleTouch?.vertical);
   const dicaDoJogo = modulo.controleTouch?.dica ?? `Arraste para mover. Toque em ${rotuloAcao}.`;
 
@@ -453,10 +460,33 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
     >
       {rotuloAcao === 'ACELERAR' ? (
         <Gauge className="w-6 h-6 text-white" />
+      ) : rotuloAcao === 'PULAR' ? (
+        <ArrowBigUpDash className="w-6 h-6 text-white" />
       ) : (
         <Crosshair className="w-6 h-6 text-white" />
       )}
       <span className="text-[8px] font-bold text-white mt-0.5 tracking-widest">{rotuloAcao}</span>
+    </button>
+  );
+
+  const botaoAcao2 = (
+    <button
+      type="button"
+      aria-label={rotuloAcao2}
+      onTouchStart={handleTouchStart('acao2')}
+      onTouchEnd={handleTouchEnd('acao2')}
+      onMouseDown={handleTouchStart('acao2')}
+      onMouseUp={handleTouchEnd('acao2')}
+      onContextMenu={(e) => e.preventDefault()}
+      className="flex flex-col items-center justify-center shrink-0 w-14 h-14 rounded-full bg-amber-600 active:bg-amber-500 active:scale-95 border-2 border-amber-400 shadow-[0_4px_0_#78350f] active:shadow-none transition-all touch-none select-none"
+      style={{ WebkitTouchCallout: 'none', overscrollBehavior: 'none' }}
+    >
+      {rotuloAcao2 === 'DINAMITE' ? (
+        <Bomb className="w-5 h-5 text-white" />
+      ) : (
+        <Rocket className="w-5 h-5 text-white" />
+      )}
+      <span className="text-[6px] font-bold text-white mt-0.5 tracking-widest">{rotuloAcao2}</span>
     </button>
   );
 
@@ -598,6 +628,8 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
               <div className="flex flex-col items-center">
                 {rotuloAcao === 'ACELERAR' ? (
                   <Gauge className="w-10 h-10 text-red-400 dica-atirar" />
+                ) : rotuloAcao === 'PULAR' ? (
+                  <ArrowBigUpDash className="w-10 h-10 text-red-400 dica-atirar" />
                 ) : (
                   <Crosshair className="w-10 h-10 text-red-400 dica-atirar" />
                 )}
@@ -700,6 +732,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
       {exibirArrastar && (
         <footer className="w-full max-w-3xl flex items-center gap-4 mt-2 px-6 py-2 z-20">
           {canhotoAtivo && temAcao && botaoAcao}
+          {canhotoAtivo && temAcao2 && botaoAcao2}
           {canhotoAtivo && temVertical && botoesVerticais}
 
           {/* Faixa de arrasto */}
@@ -718,10 +751,23 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
             onPointerCancel={limparFaixaToque}
             onPointerLeave={limparFaixaToque}
           >
-            {/* Trilho */}
-            <div className="absolute left-5 right-5 top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-slate-700/80" />
-            <MoveHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 pointer-events-none" />
-            <MoveHorizontal className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 pointer-events-none" />
+            {quatroVias ? (
+              <>
+                {/* Vidas/setas esmaecidas nos 4 sentidos */}
+                <MoveHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 pointer-events-none" />
+                <MoveHorizontal className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 pointer-events-none" />
+                <MoveVertical className="absolute top-1.5 left-1/2 -translate-x-1/2 w-4 h-4 text-slate-600 pointer-events-none" />
+                <MoveVertical className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-4 text-slate-600 pointer-events-none" />
+                <Move className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 text-slate-700 pointer-events-none" />
+              </>
+            ) : (
+              <>
+                {/* Trilho */}
+                <div className="absolute left-5 right-5 top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-slate-700/80" />
+                <MoveHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 pointer-events-none" />
+                <MoveHorizontal className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 pointer-events-none" />
+              </>
+            )}
             {/* Alça neon sob o dedo */}
             {faixaToqueX !== null && (
               <div
@@ -732,6 +778,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
           </div>
 
           {!canhotoAtivo && temVertical && botoesVerticais}
+          {!canhotoAtivo && temAcao2 && botaoAcao2}
           {!canhotoAtivo && temAcao && botaoAcao}
         </footer>
       )}

@@ -4,6 +4,7 @@
  */
 
 import { InputState } from '../../engine/types';
+import { lerControles } from '../../shared/controles';
 import { escalar } from './escala';
 import { Nave } from './tipos';
 import { aplicarWrap, TAU } from './vetor';
@@ -61,19 +62,37 @@ export function atualizarNave(
   if (nave.recargaSalto > 0) nave.recargaSalto = Math.max(0, nave.recargaSalto - dt);
   if (nave.tempoDuplo > 0) nave.tempoDuplo = Math.max(0, nave.tempoDuplo - dt);
 
-  if (input.esquerda) nave.angulo -= VELOCIDADE_GIRO * dt;
-  if (input.direita) nave.angulo += VELOCIDADE_GIRO * dt;
-
-  if (nave.angulo > Math.PI) nave.angulo -= TAU;
-  if (nave.angulo < -Math.PI) nave.angulo += TAU;
-
-  nave.acelerando = input.cima;
-
-  if (nave.acelerando) {
-    nave.vx += Math.cos(nave.angulo) * ACELERACAO * dt;
-    nave.vy += Math.sin(nave.angulo) * ACELERACAO * dt;
+  const sens = lerControles().sensibilidade;
+  if (input.arrastando) {
+    // Arraste horizontal gira a nave (proporcional)
+    const dx = input.arrasteDX * sens;
+    nave.angulo += dx * 0.0075;
+    // Arrasto para cima dispara o propulsor (como ▲)
+    const dy = input.arrasteDY * sens;
+    if (dy < -2) {
+      nave.acelerando = true;
+      const fator = Math.min(1.1, -dy / 12 + 0.35);
+      nave.vx += Math.cos(nave.angulo) * ACELERACAO * fator * dt;
+      nave.vy += Math.sin(nave.angulo) * ACELERACAO * fator * dt;
+    } else {
+      nave.acelerando = false;
+      nave.timerPropulsor = 0;
+    }
   } else {
-    nave.timerPropulsor = 0;
+    if (input.esquerda) nave.angulo -= VELOCIDADE_GIRO * dt;
+    if (input.direita) nave.angulo += VELOCIDADE_GIRO * dt;
+
+    if (nave.angulo > Math.PI) nave.angulo -= TAU;
+    if (nave.angulo < -Math.PI) nave.angulo += TAU;
+
+    nave.acelerando = input.cima;
+
+    if (nave.acelerando) {
+      nave.vx += Math.cos(nave.angulo) * ACELERACAO * dt;
+      nave.vy += Math.sin(nave.angulo) * ACELERACAO * dt;
+    } else {
+      nave.timerPropulsor = 0;
+    }
   }
 
   // Atrito exponencial independente de FPS
