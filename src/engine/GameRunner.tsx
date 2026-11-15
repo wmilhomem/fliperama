@@ -19,6 +19,7 @@ import {
   Gamepad2,
   Crosshair,
   MoveHorizontal,
+  MoveVertical,
   Hand,
   Gauge,
   ChevronUp,
@@ -257,6 +258,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
           acao: base.acao || frame.acao,
           acaoPressionada: base.acaoPressionada || frame.acaoPressionada,
           arrasteDX: frame.arrasteDX,
+          arrasteDY: frame.arrasteDY,
           arrastando: frame.arrastando,
         };
 
@@ -435,8 +437,10 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
 
   const limparFaixaToque = () => setFaixaToqueX(null);
 
+  const temAcao = Boolean(modulo.controleTouch?.acaoRotulo);
   const rotuloAcao = modulo.controleTouch?.acaoRotulo ?? 'ATIRAR';
   const temVertical = Boolean(modulo.controleTouch?.vertical);
+  const dicaDoJogo = modulo.controleTouch?.dica ?? `Arraste para mover. Toque em ${rotuloAcao}.`;
 
   const botaoAcao = (
     <button
@@ -590,13 +594,21 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
           <div className="flex items-center gap-6 bg-slate-950/80 border border-cyan-500/60 rounded-2xl px-8 py-5 shadow-[0_0_35px_rgba(34,211,238,0.3)]">
             <Hand className="w-12 h-12 text-cyan-300 dica-arrastar" />
             <MoveHorizontal className="w-8 h-8 text-slate-300" />
-            <div className="flex flex-col items-center">
-              <Crosshair className="w-10 h-10 text-red-400 dica-atirar" />
-              <span className="text-[7px] text-red-300 mt-1 tracking-widest">ATIRAR</span>
-            </div>
+            {temAcao ? (
+              <div className="flex flex-col items-center">
+                {rotuloAcao === 'ACELERAR' ? (
+                  <Gauge className="w-10 h-10 text-red-400 dica-atirar" />
+                ) : (
+                  <Crosshair className="w-10 h-10 text-red-400 dica-atirar" />
+                )}
+                <span className="text-[7px] text-red-300 mt-1 tracking-widest">{rotuloAcao}</span>
+              </div>
+            ) : (
+              <MoveVertical className="w-8 h-8 text-slate-300" />
+            )}
           </div>
           <p className="text-[11px] text-white bg-black/75 border border-cyan-500/50 rounded-lg px-4 py-2 tracking-wide">
-            Arraste para mover. Toque em {rotuloAcao}.
+            {dicaDoJogo}
           </p>
         </div>
       )}
@@ -631,7 +643,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
                 </div>
               ))}
               <div>
-                arrasteDX {diagInfo.arrasteDX.toFixed(1)}
+                arrasteDX {diagInfo.arrasteDX.toFixed(1)} · arrasteDY {diagInfo.arrasteDY.toFixed(1)}
                 {diagInfo.arrastando ? ' (arrastando)' : ''}
               </div>
               <div>ATIRAR: {diagInfo.atirarHeld ? 'pressionado' : '—'}</div>
@@ -687,7 +699,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
       {/* CONTROLES POR GESTOS — piloto "arrastar" (exclusivo para mobile) */}
       {exibirArrastar && (
         <footer className="w-full max-w-3xl flex items-center gap-4 mt-2 px-6 py-2 z-20">
-          {canhotoAtivo && botaoAcao}
+          {canhotoAtivo && temAcao && botaoAcao}
           {canhotoAtivo && temVertical && botoesVerticais}
 
           {/* Faixa de arrasto */}
@@ -720,7 +732,7 @@ export const GameRunner: React.FC<GameRunnerProps> = ({
           </div>
 
           {!canhotoAtivo && temVertical && botoesVerticais}
-          {!canhotoAtivo && botaoAcao}
+          {!canhotoAtivo && temAcao && botaoAcao}
         </footer>
       )}
 

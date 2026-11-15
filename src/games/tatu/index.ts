@@ -49,10 +49,16 @@ export const tatuGameModule: GameModule = {
   corTema: '#84CC16', // Verde-limão neon
   largura: 480,
   altura: 560,
+  controleTouch: {
+    padrao: 'arrastar',
+    esquemas: ['arrastar', 'classico'],
+    dica: 'Arraste na faixa em qualquer direção.',
+  },
   instrucoes: {
     historia:
       'Um esperto tatu-bola explora um labirinto de pedras à noite, coletando sementes enquanto quatro sombras ancestrais o perseguem. Ao saborear uma pimenta vermelha, ele se enrola em uma bola blindada invencível capaz de dispersar as sombras! A partir da fase 4, pimentas alternadas perdem o efeito.',
     controles: [
+      'Arraste na faixa para mover em qualquer direção',
       'Setas / WASD / D-Pad: Mover o Tatu nas 4 direções',
       'Buffer de curva automático para curvas perfeitas em esquinas',
       'Tecla P: Pausar / Continuar',
@@ -204,12 +210,22 @@ export const tatuGameModule: GameModule = {
         // MODO JOGANDO NORMAL
         // -----------------------------------------------------------
 
-        // Mapear entrada em 4 direções
+        // Mapear entrada em 4 direções — teclado/D-pad ou gesto de arrasto
+        const gestoMagnitude = Math.abs(input.arrasteDX) + Math.abs(input.arrasteDY);
         let inputDir: Direcao = 'parado';
-        if (input.cima) inputDir = 'cima';
-        else if (input.baixo) inputDir = 'baixo';
-        else if (input.esquerda) inputDir = 'esquerda';
-        else if (input.direita) inputDir = 'direita';
+        if (input.arrastando && gestoMagnitude > 2) {
+          // Eixo dominante decide a direção (arraste parado = tatu para)
+          if (Math.abs(input.arrasteDX) >= Math.abs(input.arrasteDY)) {
+            inputDir = input.arrasteDX >= 0 ? 'direita' : 'esquerda';
+          } else {
+            inputDir = input.arrasteDY >= 0 ? 'baixo' : 'cima';
+          }
+        } else if (!input.arrastando) {
+          if (input.cima) inputDir = 'cima';
+          else if (input.baixo) inputDir = 'baixo';
+          else if (input.esquerda) inputDir = 'esquerda';
+          else if (input.direita) inputDir = 'direita';
+        }
 
         // Atualizar Tatu
         atualizarTatu(tatu, dt, inputDir, grid);

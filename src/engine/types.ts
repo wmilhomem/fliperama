@@ -36,6 +36,8 @@ export interface InputState {
    * Zera ao ser lido. Retrocompatível: jogos que não leem ignoram.
    */
   arrasteDX: number;
+  /** Deslocamento vertical acumulado (pixels lógicos), zerado na leitura. */
+  arrasteDY: number;
   /** Verdadeiro enquanto houver um dedo na faixa de arrasto. */
   arrastando: boolean;
 }
@@ -255,8 +257,10 @@ export interface GameModule {
     padrao: 'arrastar' | 'classico';
     /** Esquemas oferecidos no seletor do jogo. */
     esquemas: Array<'arrastar' | 'classico'>;
-    /** Rótulo do botão principal (padrão "ATIRAR"). */
+    /** Rótulo do botão principal; ausente = sem botão (ex.: labirinto). */
     acaoRotulo?: string;
+    /** Texto da dica de primeiro uso; padrão deriva de acaoRotulo. */
+    dica?: string;
     /** Exibe o par ▲▼ (acelerar/frear) para cima/baixo. */
     vertical?: boolean;
   };

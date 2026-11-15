@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -20,6 +20,8 @@ import { lerControles, ModoTiro } from '../shared/controles';
 export interface GestureFrame {
   /** Deslocamento horizontal acumulado (pixels lógicos), zerado na leitura. */
   arrasteDX: number;
+  /** Deslocamento vertical acumulado (pixels lógicos), zerado na leitura. */
+  arrasteDY: number;
   /** Verdadeiro enquanto houver ao menos um dedo na faixa de arrasto. */
   arrastando: boolean;
   /** Ação mantida (ATIRAR pressionado, ou "auto" com dedo na faixa). */
@@ -38,6 +40,7 @@ export interface PonteiroInfo {
 export interface DiagnosticoTouch {
   ponteiros: PonteiroInfo[];
   arrasteDX: number;
+  arrasteDY: number;
   arrastando: boolean;
   atirarHeld: boolean;
   modoTiro: ModoTiro;
@@ -51,6 +54,7 @@ interface Ponteiro {
   id: number;
   zona: 'faixa' | 'atirar';
   ultimoX: number;
+  ultimoY: number;
   inicioX: number;
   inicioY: number;
   inicioT: number;
@@ -65,11 +69,13 @@ export class GestureInputManager {
 
   private ponteiros = new Map<number, Ponteiro>();
   private arrasteDX = 0;
+  private arrasteDY = 0;
   private atirarHeld = false;
   private atirarEdge = false;
   private latenciaMs = 0;
   private ultimoEventoT: number | null = null;
   private ultimoArrasteDX = 0;
+  private ultimoArrasteDY = 0;
   private descartadas = 0;
 
   private anexosFaixa: (() => void)[] = [];
@@ -146,6 +152,7 @@ export class GestureInputManager {
       id: e.pointerId,
       zona: 'faixa',
       ultimoX: e.clientX,
+      ultimoY: e.clientY,
       inicioX: e.clientX,
       inicioY: e.clientY,
       inicioT: performance.now(),
@@ -163,9 +170,12 @@ export class GestureInputManager {
     }
     this.marcarEvento();
     const dx = e.clientX - p.ultimoX;
+    const dy = e.clientY - p.ultimoY;
     p.ultimoX = e.clientX;
-    p.movidos += Math.abs(dx);
+    p.ultimoY = e.clientY;
+    p.movidos += Math.abs(dx) + Math.abs(dy);
     this.arrasteDX += dx * this.escala;
+    this.arrasteDY += dy * this.escala;
   };
 
   private aoFaixaFim = (e: PointerEvent): void => {
@@ -194,6 +204,7 @@ export class GestureInputManager {
       id: e.pointerId,
       zona: 'atirar',
       ultimoX: e.clientX,
+      ultimoY: e.clientY,
       inicioX: e.clientX,
       inicioY: e.clientY,
       inicioT: performance.now(),
@@ -213,6 +224,7 @@ export class GestureInputManager {
   liberarTudo(): void {
     this.ponteiros.clear();
     this.arrasteDX = 0;
+    this.arrasteDY = 0;
     this.atirarHeld = false;
     this.atirarEdge = false;
   }
@@ -230,12 +242,15 @@ export class GestureInputManager {
     const acaoHeld = config.modoTiro === 'auto' ? temFaixa : this.atirarHeld;
     const frame: GestureFrame = {
       arrasteDX: this.arrasteDX,
+      arrasteDY: this.arrasteDY,
       arrastando: temFaixa,
       acao: acaoHeld,
       acaoPressionada: this.atirarEdge,
     };
     if (this.arrasteDX !== 0) this.ultimoArrasteDX = this.arrasteDX;
+    if (this.arrasteDY !== 0) this.ultimoArrasteDY = this.arrasteDY;
     this.arrasteDX = 0;
+    this.arrasteDY = 0;
     this.atirarEdge = false;
     if (this.ultimoEventoT !== null) {
       this.latenciaMs = performance.now() - this.ultimoEventoT;
@@ -253,6 +268,7 @@ export class GestureInputManager {
     return {
       ponteiros,
       arrasteDX: this.ultimoArrasteDX,
+      arrasteDY: this.ultimoArrasteDY,
       arrastando: ponteiros.some((p) => p.zona === 'faixa'),
       atirarHeld: this.atirarHeld,
       modoTiro: config.modoTiro,
