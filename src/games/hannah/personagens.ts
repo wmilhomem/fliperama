@@ -63,17 +63,22 @@ export function desenharZeca(
   y: number,
   dir: 1 | -1,
   frame: number,
-  martelo: boolean
+  martelo: boolean,
+  escalando: boolean = false
 ) {
   g.save();
   g.translate(x, y);
   g.scale(dir, 1);
 
   const passo = frame % 2 === 0;
+  const pernaA = passo ? 11 : 6;
+  const pernaB = passo ? 6 : 11;
+  const bracoA = escalando ? (passo ? -10 : -2) : (passo ? 5 : -5);
+  const bracoB = escalando ? (passo ? -2 : -10) : (passo ? -5 : 5);
 
   // Pernas (macacão azul-petróleo)
-  retangulo(g, -6, -12, 5, passo ? 9 : 7, Z.macacao);
-  retangulo(g, 1, -12, 5, passo ? 7 : 9, Z.macacao);
+  retangulo(g, -6, -12, 5, pernaA, Z.macacao);
+  retangulo(g, 1, -12, 5, pernaB, Z.macacao);
   // Botas
   retangulo(g, -7, -3, 6, 3, Z.bota);
   retangulo(g, 1, -3, 6, 3, Z.bota);
@@ -97,12 +102,12 @@ export function desenharZeca(
   // Olho único frontal
   retangulo(g, 1, -26, 2, 2, '#1C1917');
 
-  // Braços
-  retangulo(g, -9, -20, 3, 7, martelo ? Z.colete : Z.macacao);
-  retangulo(g, 6, -20, 3, 7, martelo ? Z.colete : Z.macacao);
+  // Braços (alternam braço ao caminhar/escando; no alto ao subir escada)
+  retangulo(g, -9, -20 + bracoA, 3, 7, martelo ? Z.colete : Z.macacao);
+  retangulo(g, 6, -20 + bracoB, 3, 7, martelo ? Z.colete : Z.macacao);
   // Mãos
-  retangulo(g, -9, -13, 3, 2, Z.pele);
-  retangulo(g, 6, -13, 3, 2, Z.pele);
+  retangulo(g, -9, -13 + bracoA, 3, 2, Z.pele);
+  retangulo(g, 6, -13 + bracoB, 3, 2, Z.pele);
 
   g.restore();
 }
@@ -250,9 +255,11 @@ export function desenharBarril(
 
 /** Martelo de borracha amarelo. */
 export function desenharMartelo(g: CanvasRenderingContext2D, x: number, y: number, frame: number) {
-  const balanco = Math.sin(frame * 0.4) * 2;
+  const balanco = Math.sin(frame * 2.2) * 4;
+  const rotacao = Math.sin(frame * 1.8) * 0.55;
   g.save();
   g.translate(x, y + balanco);
+  g.rotate(rotacao);
   // Cabo de madeira
   retangulo(g, -2, -2, 4, 12, '#A16207');
   // Cabeça de borracha amarela

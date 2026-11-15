@@ -741,13 +741,15 @@ export const hannahGameModule: GameModule = {
           const escada = estrutura.escadas[b.escadaId];
           b.y += 85 * dt;
           b.x = escada.x;
-          // Pousou na viga de baixo
-          const vigia = encontrarSegmentoDe(b.x, b.y + b.radius);
-          if (vigia && b.y + b.radius >= vigia.yEm(b.x)) {
-            b.y = vigia.yEm(b.x) - b.radius;
+          // Pousou na viga de baixo (a escada termina nela), não na que está saindo
+          const giA = estrutura.girders[escada.entre[0]];
+          const giB = estrutura.girders[escada.entre[1]];
+          const vigiaBaixo = giA.yEm(b.x) > giB.yEm(b.x) ? giA : giB;
+          if (vigiaBaixo && b.y + b.radius >= vigiaBaixo.yEm(b.x)) {
+            b.y = vigiaBaixo.yEm(b.x) - b.radius;
             b.descendoEscada = false;
             b.escadaId = null;
-            b.vx = vigia.direcao * desafio().barrilVelocidade;
+            b.vx = vigiaBaixo.direcao * desafio().barrilVelocidade;
             b.vy = 0;
             ctx.audio.tocar('barril');
             for (let i = 0; i < 5; i++) {
@@ -1321,7 +1323,7 @@ export const hannahGameModule: GameModule = {
         if (jogador.invencivelTimer > 0 && Math.floor(jogador.invencivelTimer * 10) % 2 === 0) {
           // piscando: pula o desenho
         } else {
-          desenharZeca(g, jogador.x + jogador.largura / 2, jogador.y + jogador.altura, jogador.facing, jogador.walkFrame, jogador.marteloTimer > 0);
+          desenharZeca(g, jogador.x + jogador.largura / 2, jogador.y + jogador.altura, jogador.facing, jogador.walkFrame, jogador.marteloTimer > 0, jogador.onLadder);
           // Martelo sobre a cabeça enquanto ativo
           if (jogador.marteloTimer > 0) {
             desenharMartelo(g, jogador.x + jogador.largura / 2 + 8, jogador.y - 4, performance.now() / 150);

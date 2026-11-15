@@ -28,7 +28,7 @@ export const TELAS: TelaDef[] = [
       { x: 140, y: 64, largura: 200, dy: 0, direcao: 1 },
       { x: 35, y: 158, largura: 410, dy: -12, direcao: -1 },
       { x: 30, y: 252, largura: 420, dy: 12, direcao: 1 },
-      { x: 50, y: 348, largura: 385, dy: -12, direcao: -1 },
+      { x: 35, y: 348, largura: 420, dy: -12, direcao: -1 },
       { x: 30, y: 444, largura: 420, dy: 12, direcao: 1 },
       { x: 12, y: 514, largura: 456, dy: 0, direcao: -1 },
     ],
