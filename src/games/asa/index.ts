@@ -1210,25 +1210,48 @@ export const asaGameModule: GameModule = {
           g.fillRect(p.x - 2, p.y - 4, 4, 8);
         }
 
-        // Tiros do jogador
-        g.fillStyle = '#FDE047';
+        // Tiros do jogador (tracers com rastro/brilho)
         for (const b of tirosJogador) {
-          g.fillRect(b.x - 1.5, b.y - 8, 3, 9);
+          g.fillStyle = 'rgba(253, 224, 71, 0.42)';
+          g.fillRect(b.x - 1, b.y + 4, 2, 18);
+          g.fillStyle = 'rgba(251, 146, 60, 0.55)';
+          g.fillRect(b.x - 1, b.y + 4, 2, 8);
+          g.fillStyle = '#FEF9C3';
+          g.fillRect(b.x - 1.5, b.y - 10, 3, 8);
+          g.fillStyle = '#FDE047';
+          g.fillRect(b.x - 1, b.y - 11, 2, 5);
         }
 
-        // MÃ­sseis do jogador
+        // Míssils do jogador (corpo + chama + fumaça)
         for (const m of misseisJogador) {
           g.save();
           g.translate(m.x, m.y);
-          g.fillStyle = '#991B1B';
-          g.fillRect(-3, -10, 6, 12);
-          g.fillStyle = '#FDE047';
+          g.globalAlpha = 0.45;
+          g.fillStyle = '#E5E7EB';
+          g.fillRect(-1, 8, 2, 12);
+          g.globalAlpha = 1;
+          const faseChama = (Math.floor(tempo * 30 + m.y * 0.2) + m.x) % 3;
+          g.fillStyle = faseChama === 0 ? '#FB923C' : faseChama === 1 ? '#FDE047' : '#F97316';
           g.beginPath();
-          g.moveTo(0, -14);
-          g.lineTo(-3, -9);
-          g.lineTo(3, -9);
+          g.moveTo(0, 10);
+          g.lineTo(-5, 3);
+          g.lineTo(5, 3);
           g.closePath();
           g.fill();
+          g.fillStyle = '#0F172A';
+          g.fillRect(-4, -10, 8, 13);
+          g.fillStyle = '#374151';
+          g.fillRect(-4, 0, 2, 3);
+          g.fillRect(2, 0, 2, 3);
+          g.fillStyle = '#FB923C';
+          g.beginPath();
+          g.moveTo(0, -14);
+          g.lineTo(-4, -10);
+          g.lineTo(4, -10);
+          g.closePath();
+          g.fill();
+          g.fillStyle = '#FDE047';
+          g.fillRect(-1, -13, 2, 2);
           g.restore();
         }
 
