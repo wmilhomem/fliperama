@@ -377,25 +377,26 @@ export const asaGameModule: GameModule = {
     }
 
     function projeteisInimigosReset() {
-      projetisInimigos = [];
-      misseisInimigos = [];
-      drones = [];
-      enxames = [];
-      baterias = [];
+      projetisInimigos.length = 0;
+      misseisInimigos.length = 0;
+      drones.length = 0;
+      enxames.length = 0;
+      baterias.length = 0;
     }
 
-    function danoAoHelicoptero(dano: number) {
+    function danoAoHelicoptero(dano: number): boolean {
       const resultado = aplicarDano(armadura, dano);
       if (!resultado.destruido) {
         if (!resultado.invulneravel) {
           ctx.audio.tocar('batida');
         }
-        return;
+        return false;
       }
       criarExplosao(particulas, heli.x, heli.y, '#FB923C', 30);
       criarExplosao(particulas, heli.x, heli.y, '#FDE047', 16);
       ctx.audio.tocar('explosaoNave');
       perderVida();
+      return true;
     }
 
     function destruirAlvosEmExplosao(x: number, y: number) {
@@ -576,7 +577,7 @@ export const asaGameModule: GameModule = {
               const rightWall = canyon.gapX + canyon.gap / 2;
               const heliDentroDoBanda = heli.y > yTela - 26 && heli.y < yTela + 26;
               if (heliDentroDoBanda && (heli.x < leftWall || heli.x > rightWall)) {
-                danoAoHelicoptero(danoObstaculo());
+                if (danoAoHelicoptero(danoObstaculo())) return;
                 heli.x = heli.x < leftWall ? leftWall - 6 : rightWall + 6;
                 heli.x = Math.max(16, Math.min(LARGURA - 16, heli.x));
                 break;
@@ -588,7 +589,7 @@ export const asaGameModule: GameModule = {
                 if (f.tipo !== 'predio') continue;
                 const yTela = f.y - cameraY;
                 if (Math.abs(yTela - heli.y) < 18 && Math.abs(f.x - heli.x) < 13) {
-                  danoAoHelicoptero(danoObstaculo());
+                  if (danoAoHelicoptero(danoObstaculo())) return;
                   heli.x = f.x < heli.x ? heli.x + 22 : heli.x - 22;
                   heli.x = Math.max(16, Math.min(LARGURA - 16, heli.x));
                   break;
@@ -601,7 +602,7 @@ export const asaGameModule: GameModule = {
               if (f.tipo !== 'cacto' && f.tipo !== 'casebre') continue;
               const yTela = f.y - cameraY;
               if (Math.abs(yTela - heli.y) < 15 && Math.abs(f.x - heli.x) < 13) {
-                danoAoHelicoptero(danoObstaculo());
+                if (danoAoHelicoptero(danoObstaculo())) return;
                 heli.x = f.x < heli.x ? heli.x + 22 : heli.x - 22;
                 heli.x = Math.max(16, Math.min(LARGURA - 16, heli.x));
                 break;
@@ -613,7 +614,7 @@ export const asaGameModule: GameModule = {
               if (f.tipo !== 'copa') continue;
               const yTela = f.y - cameraY;
               if (Math.abs(yTela - heli.y) < 17 && Math.abs(f.x - heli.x) < 13) {
-                danoAoHelicoptero(danoObstaculo());
+                if (danoAoHelicoptero(danoObstaculo())) return;
                 heli.x = f.x < heli.x ? heli.x + 18 : heli.x - 18;
                 heli.x = Math.max(16, Math.min(LARGURA - 16, heli.x));
                 break;
@@ -704,7 +705,7 @@ export const asaGameModule: GameModule = {
 
           if (atualizarCombustivel(combustivelEstado, dtSeguro, { cima: input.cima, baixo: input.baixo })) {
             criarExplosao(particulas, heli.x, heli.y, '#FB923C', 26);
-            danoAoHelicoptero(99);
+            if (danoAoHelicoptero(99)) return;
             return;
           }
 
@@ -827,7 +828,10 @@ export const asaGameModule: GameModule = {
               p.y > heliBox.y - 2 &&
               p.y < heliBox.y + heliBox.altura + 2
             ) {
-              danoAoHelicoptero(danoBalaInimiga());
+              if (danoAoHelicoptero(danoBalaInimiga())) {
+                projetisInimigos.splice(i, 1);
+                return;
+              }
               projetisInimigos.splice(i, 1);
             } else if (p.y > ALTURA + 10 || p.x < -20 || p.x > LARGURA + 20) {
               projetisInimigos.splice(i, 1);
@@ -835,8 +839,13 @@ export const asaGameModule: GameModule = {
           }
           for (let i = misseisInimigos.length - 1; i >= 0; i--) {
             const m = misseisInimigos[i];
+            atualizarMissilInimigo(m, heli.x, heli.y, dtSeguro);
             if (Math.hypot(m.x - heli.x, m.y - heli.y) < 16) {
-              danoAoHelicoptero(danoMissilInimigo());
+              if (danoAoHelicoptero(danoMissilInimigo())) {
+                misseisInimigos.splice(i, 1);
+                criarExplosao(particulas, m.x, m.y, '#DC2626', 16);
+                return;
+              }
               criarExplosao(particulas, m.x, m.y, '#DC2626', 16);
               misseisInimigos.splice(i, 1);
             }
@@ -844,7 +853,11 @@ export const asaGameModule: GameModule = {
           for (let i = drones.length - 1; i >= 0; i--) {
             const d = drones[i];
             if (Math.abs(d.x - heli.x) < 18 && Math.abs(d.y - heli.y) < 15) {
-              danoAoHelicoptero(danoBalaInimiga());
+              if (danoAoHelicoptero(danoBalaInimiga())) {
+                criarExplosao(particulas, d.x, d.y, '#22D3EE', 14);
+                drones.splice(i, 1);
+                return;
+              }
               criarExplosao(particulas, d.x, d.y, '#22D3EE', 14);
               drones.splice(i, 1);
             }
@@ -853,7 +866,11 @@ export const asaGameModule: GameModule = {
             for (const m of e.membros) {
               if (m.vida <= 0) continue;
               if (Math.abs(m.x - heli.x) < 12 && Math.abs(m.y - heli.y) < 10) {
-                danoAoHelicoptero(danoBalaInimiga());
+                if (danoAoHelicoptero(danoBalaInimiga())) {
+                  criarExplosao(particulas, m.x, m.y, '#A78BFA', 10);
+                  m.vida = 0;
+                  return;
+                }
                 criarExplosao(particulas, m.x, m.y, '#A78BFA', 10);
                 m.vida = 0;
               }
@@ -1042,7 +1059,10 @@ export const asaGameModule: GameModule = {
               p.y > heliBox.y - 2 &&
               p.y < heliBox.y + heliBox.altura + 2
             ) {
-              danoAoHelicoptero(danoBalaInimiga());
+              if (danoAoHelicoptero(danoBalaInimiga())) {
+                projetisInimigos.splice(i, 1);
+                return;
+              }
               projetisInimigos.splice(i, 1);
             } else if (p.y > ALTURA + 10 || p.x < -20 || p.x > LARGURA + 20 || p.y < 40) {
               projetisInimigos.splice(i, 1);
@@ -1052,7 +1072,11 @@ export const asaGameModule: GameModule = {
             const m = misseisInimigos[i];
             atualizarMissilInimigo(m, heli.x, heli.y, dtSeguro);
             if (Math.hypot(m.x - heli.x, m.y - heli.y) < 16) {
-              danoAoHelicoptero(danoMissilInimigo());
+              if (danoAoHelicoptero(danoMissilInimigo())) {
+                criarExplosao(particulas, m.x, m.y, '#DC2626', 16);
+                misseisInimigos.splice(i, 1);
+                return;
+              }
               criarExplosao(particulas, m.x, m.y, '#DC2626', 16);
               misseisInimigos.splice(i, 1);
             } else if (m.vida <= 0) {
