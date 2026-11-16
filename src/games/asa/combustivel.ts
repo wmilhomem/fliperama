@@ -12,6 +12,7 @@ import {
   COMBUSTIVEL_INICIAL,
   COMBUSTIVEL_MAX,
   MISSEIS_REPOSTOS_POR_TANK,
+  TANKER_REAPARICAO_SEG,
   TANKER_TEMPO_CONEXAO,
   TANKER_VEL_Y,
   TANKER_X,
@@ -39,7 +40,7 @@ export function criarEstadoCombustivel(missao = 1, ciclo = 1, misseisIniciais = 
   };
 }
 
-export function criarTanque(proximaEm: number): Tanque {
+export function criarTanque(proximaEm: number, maxAparicoes = 1): Tanque {
   return {
     x: TANKER_X,
     y: 0,
@@ -49,6 +50,7 @@ export function criarTanque(proximaEm: number): Tanque {
     proximaEm,
     aviso: false,
     recarregando: -1,
+    aparicoesRestantes: maxAparicoes,
   };
 }
 
@@ -80,6 +82,8 @@ export function atualizarTanque(
   tocarRecarga: () => void
 ): 'recarregou' | null {
   if (!tanque.ativo) {
+    if (tanque.aparicoesRestantes <= 0) return null; // sem mais aparições
+
     tanque.proximaEm -= dt;
     if (tanque.proximaEm <= 2 && !tanque.aviso) {
       tanque.aviso = true;
@@ -89,7 +93,8 @@ export function atualizarTanque(
       tanque.ativo = true;
       tanque.y = 560 + 60; // entra pela base e sobe
       tanque.aviso = false;
-      tanque.proximaEm = 999; // só 1 na missão 1
+      tanque.aparicoesRestantes -= 1;
+      tanque.proximaEm = 999;
     }
     return null;
   }
@@ -99,6 +104,10 @@ export function atualizarTanque(
   // Saiu pela parte de cima sem ser reabastecido: perdido
   if (tanque.y < -90) {
     tanque.ativo = false;
+    // Próxima aparição em intervalo
+    if (tanque.aparicoesRestantes > 0) {
+      tanque.proximaEm = TANKER_REAPARICAO_SEG + Math.random() * 6;
+    }
     return null;
   }
 
@@ -130,6 +139,9 @@ export function atualizarTanque(
       estado.recargaT = 0;
       estado.recarregando = false;
       tanque.ativo = false;
+      if (tanque.aparicoesRestantes > 0) {
+        tanque.proximaEm = TANKER_REAPARICAO_SEG + Math.random() * 6;
+      }
       return 'recarregou';
     }
   } else {

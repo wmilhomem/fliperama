@@ -90,6 +90,8 @@ export interface Tanque {
   proximaEm: number; // segundos até o próximo aparecimento
   aviso: boolean;
   recarregando: number; // segundos restantes de conexão (-1 se vazio)
+  /** Aparições restantes (a missão começa com 1 ou 2, reabastecida em M4/M5). */
+  aparicoesRestantes: number;
 }
 
 // ===== Partículas e textos flutuantes =====

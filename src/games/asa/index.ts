@@ -39,6 +39,7 @@ import {
   ROLAGEM_MIN,
   ROLAGEM_PADRAO,
   ROLAGEM_RETORNO,
+  TANKER_APARICOES,
 } from './config';
 import {
   criarHelicoptero,
@@ -197,7 +198,7 @@ export const asaGameModule: GameModule = {
     let armadura = criarArmadura();
     let armas = criarEstadoArmas(missaoAtual, cicloAtual);
     let combustivelEstado = criarEstadoCombustivel(missaoAtual, cicloAtual, armas.misseis);
-    let tanque = criarTanque(14);
+    let tanque = criarTanque(14, TANKER_APARICOES[Math.min(missaoAtual - 1, TANKER_APARICOES.length - 1)] ?? 1);
     let vento = criarEstadoVento(bioma);
     let climaEstado = criarEstadoClima(climaTipo);
 
@@ -257,7 +258,7 @@ export const asaGameModule: GameModule = {
       armadura = criarArmadura();
       armas = criarEstadoArmas(missaoAtual, cicloAtual);
       combustivelEstado = criarEstadoCombustivel(missaoAtual, cicloAtual, armas.misseis);
-      tanque = criarTanque(14);
+      tanque = criarTanque(14, TANKER_APARICOES[Math.min(missaoAtual - 1, TANKER_APARICOES.length - 1)] ?? 1);
       vento = criarEstadoVento(bioma);
       climaEstado = criarEstadoClima(climaTipo);
 

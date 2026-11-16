@@ -73,11 +73,11 @@ export const MISSEIS_POR_CICLO = 2;
 export const COMBUSTIVEL_MAX = 100;
 export const COMBUSTIVEL_INICIAL = 100;
 /** Consumo por segundo em cruzeiro. */
-export const COMBUSTIVEL_GASTO_BASE = 2.6;
+export const COMBUSTIVEL_GASTO_BASE = 1.05;
 /** Consumo por segundo com CIMA segurado. */
-export const COMBUSTIVEL_GASTO_ACELERANDO = 5.2;
+export const COMBUSTIVEL_GASTO_ACELERANDO = 2.2;
 /** Consumo por segundo com BAIXO segurado. */
-export const COMBUSTIVEL_GASTO_DESACELERADO = 1.4;
+export const COMBUSTIVEL_GASTO_DESACELERADO = 0.6;
 
 // ===== Avião-tanque =====
 /** Quanto tempo a conexão precisa ser mantida para completar o reabastecimento. */
@@ -88,7 +88,11 @@ export const TANKER_ZONA_ALTURA = 24;
 export const TANKER_VEL_Y = -110;
 export const TANKER_X = LARGURA / 2 - 22;
 /** Primeira aparição do tanque na missão 1 (segundos). */
-export const TANKER_MISSAO1_APARICAO = 22;
+export const TANKER_MISSAO1_APARICAO = 14;
+/** Intervalo entre aparições de tanques subsequentes (segundos). */
+export const TANKER_REAPARICAO_SEG = 24;
+/** Quantas aparições de tanque são permitidas por missão (M1-3: 1; M4-5: 2). */
+export const TANKER_APARICOES = [1, 1, 1, 2, 2];
 /** Mísseis repostos pelo tanque em cada reabastecimento. */
 export const MISSEIS_REPOSTOS_POR_TANK = 2;
 
