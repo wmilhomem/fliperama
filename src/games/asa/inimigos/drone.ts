@@ -3,62 +3,55 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Drone } from '../tipos';
+/** Drone de patrulha — voa em linha reta na horizontal. */
 
-/**
- * DRONE DE PATRULHA — voa em quadrado (sobe, vai pra esquerda/direita, desce).
- */
-export function criarDrone(x: number, y: number): Drone {
-  return { tipo: 'drone', x, y, vx: 60, vy: 0, fase: 0, vida: 1, flash: 0 };
+import { DronePatrulha } from '../tipos';
+
+export function criarDrone(x: number, y: number, direcao = 1, velocidade = 120): DronePatrulha {
+  return {
+    tipo: 'dronePatrulha',
+    x,
+    y,
+    vx: direcao * velocidade,
+    vy: 0,
+    vida: 1,
+    flash: 0,
+  };
 }
 
-export function atualizarDrone(drone: Drone, dt: number): void {
-  drone.flash = Math.max(0, drone.flash - dt * 3);
-  drone.fase += dt * 1.4;
-
-  // Movimento quadrado: cima → lado → baixo → volta
-  const t = drone.fase % 4;
-  if (t < 1) {
-    drone.vx = 0;
-    drone.vy = -55;
-  } else if (t < 2) {
-    drone.vx = 75;
-    drone.vy = 0;
-  } else if (t < 3) {
-    drone.vx = 0;
-    drone.vy = 55;
-  } else {
-    drone.vx = -75;
-    drone.vy = 0;
-  }
-
-  drone.x += drone.vx * dt;
-  drone.y += drone.vy * dt;
+export function atualizarDrone(d: DronePatrulha, dt: number): void {
+  d.flash = Math.max(0, d.flash - dt * 3);
+  d.x += d.vx * dt;
+  d.y += d.vy * dt;
 }
 
-export function desenharDrone(g: CanvasRenderingContext2D, drone: Drone, tempo: number): void {
+export function desenharDrone(g: CanvasRenderingContext2D, d: DronePatrulha, tempo: number): void {
   g.save();
-  g.translate(drone.x, drone.y);
+  g.translate(d.x, d.y);
+  const dir = d.vx >= 0 ? 1 : -1;
+  g.scale(dir, 1);
 
-  // Corpo quadriculado
-  g.fillStyle = drone.flash > 0 ? '#FFFFFF' : '#22D3EE';
-  g.fillRect(-8, -8, 16, 16);
-  g.fillStyle = drone.flash > 0 ? '#FFFFFF' : '#155E75';
-  g.fillRect(-8, 4, 16, 4);
+  // Corpo (cinza com faixa ciano)
+  g.fillStyle = d.flash > 0 ? '#FFFFFF' : '#475569';
+  g.fillRect(-10, -6, 20, 12);
+  g.fillStyle = d.flash > 0 ? '#FFFFFF' : '#22D3EE';
+  g.fillRect(-4, -2, 8, 4);
 
-  // Olho (scanner) pulsante
-  const brilho = 0.5 + 0.5 * Math.sin(tempo * 8);
-  g.fillStyle = `rgba(252, 165, 165, ${brilho})`;
-  g.beginPath();
-  g.arc(0, -1, 4, 0, Math.PI * 2);
-  g.fill();
+  // Asas horizontais
+  g.fillStyle = '#1E293B';
+  g.fillRect(-16, -2, 6, 4);
+  g.fillRect(10, -2, 6, 4);
 
-  // Hélices nos cantos
-  g.fillStyle = '#164E63';
-  g.fillRect(-12, -12, 6, 3);
-  g.fillRect(6, -12, 6, 3);
-  g.fillRect(-12, 9, 6, 3);
-  g.fillRect(6, 9, 6, 3);
+  // Hélices nos extremos
+  const fase = Math.floor(tempo * 30 + d.x * 0.1) % 2 === 0;
+  g.fillStyle = '#0F172A';
+  if (fase) {
+    g.fillRect(-18, -4, 4, 8);
+    g.fillRect(14, -4, 4, 8);
+  } else {
+    g.fillRect(-18, -1, 4, 2);
+    g.fillRect(14, -1, 4, 2);
+  }
 
   g.restore();
 }

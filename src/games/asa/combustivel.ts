@@ -3,37 +3,37 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/** Combustível e avião-tanque. */
+
 import {
-  BOMBAS_RECARGA_TANK,
-  BOMBAS_POR_SETOR,
   COMBUSTIVEL_GASTO_ACELERANDO,
   COMBUSTIVEL_GASTO_BASE,
   COMBUSTIVEL_GASTO_DESACELERADO,
   COMBUSTIVEL_INICIAL,
   COMBUSTIVEL_MAX,
-  TANKER_INTERVALO_MAX,
-  TANKER_INTERVALO_MIN,
-  TANKER_RAIO_CONEXAO_ALTURA,
-  TANKER_RAIO_CONEXAO_LARGURA,
-  TANKER_TEMPO_RECARGA,
+  MISSEIS_REPOSTOS_POR_TANK,
+  TANKER_TEMPO_CONEXAO,
   TANKER_VEL_Y,
   TANKER_X,
-} from './constantes';
+  TANKER_ZONA_ALTURA,
+  TANKER_ZONA_LARGURA,
+} from './config';
 import { Tanque } from './tipos';
-import { entre } from './util';
 
 /** Estado compartilhado do sistema de combustível. */
 export interface EstadoCombustivel {
   combustivel: number;
-  bombas: number;
+  misseis: number;
   recargaT: number; // tempo acumulado na zona de conexão
   recarregando: boolean;
 }
 
-export function criarEstadoCombustivel(): EstadoCombustivel {
+export function criarEstadoCombustivel(missao = 1, ciclo = 1, misseisIniciais = 10): EstadoCombustivel {
+  void missao;
+  void ciclo;
   return {
     combustivel: COMBUSTIVEL_INICIAL,
-    bombas: BOMBAS_POR_SETOR,
+    misseis: misseisIniciais,
     recargaT: 0,
     recarregando: false,
   };
@@ -48,10 +48,11 @@ export function criarTanque(proximaEm: number): Tanque {
     ativo: false,
     proximaEm,
     aviso: false,
+    recarregando: -1,
   };
 }
 
-/** Consome combustível; retorna o dano se chegar a zero (motor falha). */
+/** Consome combustível; retorna true se zerar (o helicóptero cai). */
 export function atualizarCombustivel(
   estado: EstadoCombustivel,
   dt: number,
@@ -67,15 +68,14 @@ export function atualizarCombustivel(
 }
 
 /**
- * Atualiza a máquina de estados do avião-tanque.
- * Retorna 'recarregou' quando completa a recarga (para pontuar 100 pts).
+ * Máquina de estados do avião-tanque.
+ * Retorna 'recarregou' quando completa a recarga (para marcar 100 pts).
  */
 export function atualizarTanque(
   tanque: Tanque,
   estado: EstadoCombustivel,
   jogador: { x: number; y: number; largura: number; altura: number },
   dt: number,
-  aleatorio: () => number,
   tocarAviso: () => void,
   tocarRecarga: () => void
 ): 'recarregou' | null {
@@ -87,48 +87,46 @@ export function atualizarTanque(
     }
     if (tanque.proximaEm <= 0) {
       tanque.ativo = true;
-      tanque.y = 560 + 60; // entra por baixo e sobe
+      tanque.y = 560 + 60; // entra pela base e sobe
       tanque.aviso = false;
-      tanque.proximaEm = entre(aleatorio, TANKER_INTERVALO_MIN, TANKER_INTERVALO_MAX);
+      tanque.proximaEm = 999; // só 1 na missão 1
     }
     return null;
   }
 
   tanque.y += tanque.vy * dt;
 
-  // Saiu pela parte de cima sem ter sido reabastecido: ciclo perdido
-  if (tanque.y < -80) {
+  // Saiu pela parte de cima sem ser reabastecido: perdido
+  if (tanque.y < -90) {
     tanque.ativo = false;
     return null;
   }
 
-  // Zona de conexão: retângulo atrás do tanque (abaixo dele)
+  // Zona de conexão: retângulo logo abaixo do tanque
   const zona = {
-    x: tanque.x + (48 - TANKER_RAIO_CONEXAO_LARGURA) / 2,
+    x: tanque.x,
     y: tanque.y + 34,
-    largura: TANKER_RAIO_CONEXAO_LARGURA,
-    altura: TANKER_RAIO_CONEXAO_ALTURA,
+    largura: TANKER_ZONA_LARGURA,
+    altura: TANKER_ZONA_ALTURA,
   };
 
   const dentro =
-    jogador.x > zona.x - 8 &&
-    jogador.x < zona.x + zona.largura + 8 &&
+    jogador.x > zona.x - 10 &&
+    jogador.x < zona.x + zona.largura + 10 &&
     jogador.y + jogador.altura / 2 > zona.y &&
     jogador.y - jogador.altura / 2 < zona.y + zona.altura;
 
   if (dentro) {
     estado.recarregando = true;
     estado.recargaT += dt;
-    // Combustível sobe continuamente durante a conexão
     estado.combustivel = Math.min(
       COMBUSTIVEL_MAX,
-      estado.combustivel + (COMBUSTIVEL_MAX / TANKER_TEMPO_RECARGA) * dt
+      estado.combustivel + (COMBUSTIVEL_MAX / TANKER_TEMPO_CONEXAO) * dt
     );
     tocarRecarga();
 
-    if (estado.recargaT >= TANKER_TEMPO_RECARGA) {
-      // Reabastecimento concluído: +100 pts e +2 bombas
-      estado.bombas = Math.min(BOMBAS_POR_SETOR, estado.bombas + BOMBAS_RECARGA_TANK);
+    if (estado.recargaT >= TANKER_TEMPO_CONEXAO) {
+      estado.misseis = Math.min(99, estado.misseis + MISSEIS_REPOSTOS_POR_TANK);
       estado.recargaT = 0;
       estado.recarregando = false;
       tanque.ativo = false;
@@ -136,7 +134,7 @@ export function atualizarTanque(
     }
   } else {
     estado.recarregando = false;
-    estado.recargaT = Math.max(0, estado.recargaT - dt * 3); // perde o progresso rápido ao sair
+    estado.recargaT = Math.max(0, estado.recargaT - dt * 3);
   }
 
   return null;
@@ -150,63 +148,63 @@ export function desenharTanque(
 ): void {
   if (!tanque.ativo) return;
 
-  // Zona de conexão (luzes piscantes)
+  // Zona de conexão (barras piscantes)
   const piscada = Math.floor(tempo * 6) % 2 === 0;
   g.save();
   g.globalAlpha = 0.9;
   g.fillStyle = piscada ? '#FDE047' : '#FACC15';
-  g.fillRect(tanque.x + 4, tanque.y + 34, 40, 2);
-  g.fillRect(tanque.x + 4, tanque.y + 34 + TANKER_RAIO_CONEXAO_ALTURA - 2, 40, 2);
-  g.fillStyle = 'rgba(253, 224, 71, 0.25)';
-  g.fillRect(tanque.x + 4, tanque.y + 34, 40, TANKER_RAIO_CONEXAO_ALTURA);
+  g.fillRect(tanque.x, tanque.y + 34, TANKER_ZONA_LARGURA, 2);
+  g.fillRect(tanque.x, tanque.y + 34 + TANKER_ZONA_ALTURA - 2, TANKER_ZONA_LARGURA, 2);
+  g.fillStyle = 'rgba(253, 224, 71, 0.22)';
+  g.fillRect(tanque.x, tanque.y + 34, TANKER_ZONA_LARGURA, TANKER_ZONA_ALTURA);
   g.restore();
 
-  // Avião-tanque (grande, lento, cortesia da FAB fictícia)
+  // Avião-tanque (grande e lento)
   g.save();
-  g.translate(tanque.x + 24, tanque.y + 20);
+  g.translate(tanque.x + TANKER_ZONA_LARGURA / 2, tanque.y + 16);
 
   // Fuselagem
   g.fillStyle = '#E2E8F0';
-  g.fillRect(-14, -18, 28, 34);
+  g.fillRect(-16, -18, 32, 32);
   g.fillStyle = '#94A3B8';
-  g.fillRect(-14, 8, 28, 8);
+  g.fillRect(-16, 6, 32, 8);
 
   // Asas gigantes
   g.fillStyle = '#CBD5F5';
-  g.fillRect(-46, -4, 92, 8);
+  g.fillRect(-50, -4, 100, 9);
   g.fillStyle = '#FB923C';
-  g.fillRect(-46, -4, 10, 8);
-  g.fillRect(36, -4, 10, 8);
+  g.fillRect(-50, -4, 11, 9);
+  g.fillRect(39, -4, 11, 9);
 
   // Cauda
   g.fillStyle = '#CBD5F5';
-  g.fillRect(-16, 12, 10, 5);
-  g.fillRect(6, 12, 10, 5);
+  g.fillRect(-17, 13, 12, 6);
+  g.fillRect(5, 13, 12, 6);
 
   // Cockpit
   g.fillStyle = '#38BDF8';
-  g.fillRect(-6, -18, 12, 7);
+  g.fillRect(-7, -18, 14, 8);
 
-  // Tanques de combustível (barris laranja sob as asas)
+  // Tanques laranjas sob as asas
   g.fillStyle = '#F97316';
-  g.fillRect(-40, 4, 14, 10);
-  g.fillRect(26, 4, 14, 10);
+  g.fillRect(-42, 5, 15, 10);
+  g.fillRect(27, 5, 15, 10);
   g.fillStyle = '#FDBA74';
-  g.fillRect(-40, 4, 14, 3);
-  g.fillRect(26, 4, 14, 3);
+  g.fillRect(-42, 5, 15, 3);
+  g.fillRect(27, 5, 15, 3);
 
   // Mangueira de abastecimento
   g.strokeStyle = '#334155';
   g.lineWidth = 2;
   g.beginPath();
-  g.moveTo(0, 12);
-  g.lineTo(0, 26);
+  g.moveTo(0, 14);
+  g.lineTo(0, 27);
   g.stroke();
 
   g.restore();
 }
 
-/** Desenha o indicador de tank chegando / seta lateral. */
+/** Seta/aviso lateral de que o tanque está chegando. */
 export function desenharIndicadorTanque(
   g: CanvasRenderingContext2D,
   tanque: Tanque,
@@ -219,6 +217,11 @@ export function desenharIndicadorTanque(
   g.fillStyle = '#FDE047';
   g.font = '8px "Press Start 2P", monospace';
   g.textAlign = 'center';
-  g.fillText('TANQUE ▼', 240, 78);
+  g.fillText('TANQUE', 240, 92);
+  // Setas laterais apontando para o tanque
+  g.beginPath();
+  g.moveTo(120, 100); g.lineTo(104, 106); g.lineTo(120, 112); g.fill();
+  g.beginPath();
+  g.moveTo(360, 100); g.lineTo(376, 106); g.lineTo(360, 112); g.fill();
   g.restore();
 }

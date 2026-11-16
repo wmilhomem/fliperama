@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** Tipos de entidades do Asa Rasante. */
+/** Tipos de entidades do Asa Rasante — campanha de missões. */
 
 export interface TiroJogador {
   x: number;
@@ -11,11 +11,10 @@ export interface TiroJogador {
   vy: number;
 }
 
-export interface BombaJogador {
+export interface MissilJogador {
   x: number;
   y: number;
   vy: number;
-  tempo: number;
 }
 
 export interface Explosao {
@@ -27,9 +26,31 @@ export interface Explosao {
   cor: string;
 }
 
-// ===== Inimigos aéreos =====
-export interface Caca {
-  tipo: 'caca';
+// ===== Helicóptero do jogador =====
+export interface HelicopteroJogador {
+  x: number;
+  y: number;
+  /** Inclinação visual ao manobrar. */
+  inclinacao: number;
+  /** Rotação do rotor principal (0..2) para animação de giro. */
+  rotor: number;
+  /** Cooldown das balas (segundos). */
+  cooldown: number;
+  /** Cooldown dos mísseis (segundos). */
+  cooldownMissil: number;
+  /** Segundos restantes de invulnerabilidade após dano. */
+  invulneravel: number;
+}
+
+// ===== Armadura =====
+export interface EstadoArmadura {
+  /** Pontos de armadura restantes (0..ARMADURA_MAX, passo de 1 = meio ícone). */
+  pontos: number;
+}
+
+// ===== Inimigos e alvos =====
+export interface DronePatrulha {
+  tipo: 'dronePatrulha';
   x: number;
   y: number;
   vx: number;
@@ -38,82 +59,25 @@ export interface Caca {
   flash: number;
 }
 
-export interface CacaMergulho {
-  tipo: 'mergulho';
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  estado: 'entrando' | 'mergulhando';
-  vida: number;
-  flash: number;
-}
-
-export interface Helicoptero {
-  tipo: 'helicoptero';
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  direcao: 1 | -1;
-  atirou: boolean;
-  vida: number;
-  flash: number;
-}
-
-export interface Drone {
-  tipo: 'drone';
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  fase: number;
-  vida: number;
-  flash: number;
-}
-
-export type InimigoAereo = Caca | CacaMergulho | Helicoptero | Drone;
-
-// ===== Alvos de solo =====
-export interface TorreAntiaerea {
-  tipo: 'torre';
+export interface BateriaAntiaerea {
+  tipo: 'bateria';
   x: number;
   y: number;
   timer: number;
   vida: number;
+  flash: number;
 }
 
-export interface Caminhao {
-  tipo: 'caminhao';
-  x: number;
-  y: number;
-  vx: number;
-  vida: number;
-}
+export type InimigoAereo = DronePatrulha;
+export type AlvoSolo = BateriaAntiaerea;
 
-export interface Bunker {
-  tipo: 'bunker';
-  x: number;
-  y: number;
-  acertos: number;
-}
-
-export interface Lancha {
-  tipo: 'lancha';
-  x: number;
-  y: number;
-  vx: number;
-  vida: number;
-}
-
-export type AlvoSolo = TorreAntiaerea | Caminhao | Bunker | Lancha;
-
-// ===== Projetis inimigos =====
-export interface ProjetilInimigo {
+// Mísseis guiados inimigos
+export interface MissilInimigo {
   x: number;
   y: number;
   vx: number;
   vy: number;
+  vida: number; // segundos restantes
 }
 
 // ===== Avião-tanque =====
@@ -124,33 +88,11 @@ export interface Tanque {
   vy: number;
   ativo: boolean;
   proximaEm: number; // segundos até o próximo aparecimento
-  aviso: boolean; // tocou o aviso sonoro
+  aviso: boolean;
+  recarregando: number; // segundos restantes de conexão (-1 se vazio)
 }
 
-// ===== Asa do jogador =====
-export interface Aviao {
-  x: number;
-  y: number;
-  velocidadeX: number;
-  inclinacao: number;
-  helice: number; // frame da hélice
-  cooldown: number;
-  cooldownBomba: number;
-  invulneravel: number;
-}
-
-// ===== Radar central (chefe) =====
-export interface CentralRadar {
-  ativo: boolean;
-  x: number;
-  y: number;
-  hp: number;
-  maxHp: number;
-  torres: Array<{ x: number; y: number; timer: number }>;
-  giro: number;
-}
-
-// ===== Partículas =====
+// ===== Partículas e textos flutuantes =====
 export interface Particula {
   x: number;
   y: number;
@@ -168,3 +110,16 @@ export interface TextoFlutuante {
   cor: string;
   vida: number;
 }
+
+// ===== Estado geral da partida =====
+export type EstadoJogo =
+  | 'ficha'
+  | 'decolagem'
+  | 'percurso'
+  | 'preChefe'
+  | 'duelo'
+  | 'explosaoChefe'
+  | 'pouso'
+  | 'resumo'
+  | 'final'
+  | 'gameOver';
