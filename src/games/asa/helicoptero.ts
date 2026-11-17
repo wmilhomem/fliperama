@@ -45,6 +45,47 @@ function retangulo(
   g.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
 }
 
+/**
+ * Desenha uma asa de caça de ataque no formato `/____| |____\`:
+ * a asa nasce na fuselagem (borda de ataque alta) e varre para trás e
+ * para fora (ponta baixa e afastada), como numa caça de ataque.
+ * `lado` = -1 (esquerda) ou 1 (direita).
+ */
+function desenharAsaCaça(g: CanvasRenderingContext2D, lado: 1 | -1): void {
+  const s = lado;
+
+  // ===== BORDA DE ATAQUE (a "/") — da raiz (alta) até a ponta (baixa e externa) =====
+  for (let i = 0; i < 6; i++) {
+    const x = s * (18 - i);
+    const y = -4 + i;
+    g.fillStyle = '#365314';
+    g.fillRect(Math.floor(Math.min(x, x + s)), Math.floor(y), 1, 1);
+  }
+
+  // ===== FAIXA HORIZONTAL (a "____") — da ponta até a fuselagem =====
+  const xRaiz = Math.min(s * 6, s * 18);
+  g.fillStyle = '#3F6212';
+  g.fillRect(Math.floor(xRaiz), -5, 12, 3);
+  // Borda de ataque mais clara (frente da asa)
+  g.fillStyle = '#4D7C0F';
+  g.fillRect(Math.floor(xRaiz), -5, 12, 1);
+
+  // ===== POD DE MÍSSEIS NA PONTA DA ASA =====
+  g.fillStyle = '#0F172A';
+  g.fillRect(Math.floor(s * 15), -1, 3, 5);
+  g.fillStyle = '#374151';
+  g.fillRect(Math.floor(s * 15), -1, 3, 1);
+  // Cone do míssil
+  g.fillStyle = '#FDE047';
+  g.fillRect(Math.floor(s * 13), 3, 1, 1);
+
+  // ===== CANO DA METRALHADORA (sob a asa, na raiz) =====
+  g.fillStyle = '#111827';
+  g.fillRect(Math.floor(s * 8), -1, 3, 2);
+  g.fillStyle = '#0F172A';
+  g.fillRect(Math.floor(s * 6), 0, 2, 1);
+}
+
 /** Desenha a sombra projetada no chão — se afasta com a aceleração. */
 export function desenharSombra(g: CanvasRenderingContext2D, x: number, yAltura: number, largura = 52): void {
   const espalhamento = Math.max(0.35, Math.min(1, (560 - yAltura) / 430));
@@ -110,23 +151,10 @@ export function desenharHelicoptero(
   retangulo(g, -4, -12, 8, 1, '#38BDF8');
   retangulo(g, -2, -10, 4, 1, '#0EA5E9');
 
-  // ===== STUBS DAS ASAS LATERAIS COM LANÇADORES =====
-  // Barra horizontal das asas (seção larga)
-  retangulo(g, -19, -4, 38, 3, '#365314');
-  // Painéis esq/dir mais claros (detalhes de superfície)
-  retangulo(g, -19, -4, 3, 3, '#4D7C0F');
-  retangulo(g, 16, -4, 3, 3, '#4D7C0F');
-  // Lançadores de mísseis (ponteiras das asas — 3 pods de cada lado)
-  retangulo(g, -24, -6, 5, 7, '#0F172A'); // ponteira esq
-  retangulo(g, 19, -6, 5, 7, '#0F172A'); // ponteira dir
-  // Ponteiras com cones de míssil
-  retangulo(g, -24, -6, 5, 1, '#374151');
-  retangulo(g, 19, -6, 5, 1, '#374151');
-  retangulo(g, -22, -7, 1, 1, '#FDE047');
-  retangulo(g, 21, -7, 1, 1, '#FDE047');
-  // Bocas das metralhadoras (sob as asas)
-  retangulo(g, -24, 2, 3, 1, '#0F172A'); // cano da metralhadora esq
-  retangulo(g, 21, 2, 3, 1, '#0F172A');  // cano da metralhadora dir
+  // ===== ASAS DE CAÇA DE ATAQUE (formato /____| |____\) =====
+  // Cada asa: faixa horizontal ligada à fuselagem + ponta diagonal para fora.
+  desenharAsaCaça(g, -1); // asa esquerda
+  desenharAsaCaça(g, 1); // asa direita
 
   // ===== DETALHES DO CORPO =====
   // Inlets de ar nas laterais do nariz

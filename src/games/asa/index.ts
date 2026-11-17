@@ -49,6 +49,12 @@ import {
 import { criarCenaDecolagem } from './cenas/decolagem';
 import { criarCenaPouso } from './cenas/pouso';
 import {
+  atualizarMusica,
+  criarMusica,
+  definirTrilha,
+  resetarMusica,
+} from './musica';
+import {
   criarChefe,
   atualizarChefe,
   decidirDisparoChefe,
@@ -201,6 +207,8 @@ export const asaGameModule: GameModule = {
     let tanque = criarTanque(14, TANKER_APARICOES[Math.min(missaoAtual - 1, TANKER_APARICOES.length - 1)] ?? 1);
     let vento = criarEstadoVento(bioma);
     let climaEstado = criarEstadoClima(climaTipo);
+    /** Trilha musical, rotor do jogador e motor do chefão. */
+    let musica = criarMusica();
 
     let tirosJogador: TiroJogador[] = [];
     let misseisJogador: MissilJogador[] = [];
@@ -223,7 +231,6 @@ export const asaGameModule: GameModule = {
     let cenaPouso: ReturnType<typeof criarCenaPouso> | null = null;
     let chefe: Chefe | null = null;
     /** Vida do chefÃ£o no instante em que a etapa comeÃ§ou (para respawn). */
-    let vidaChefeInicioEtapa = 0;
 
     // EstatÃ­sticas para o resumo
     let alvosDestruidos = 0;
@@ -261,6 +268,7 @@ export const asaGameModule: GameModule = {
       tanque = criarTanque(14, TANKER_APARICOES[Math.min(missaoAtual - 1, TANKER_APARICOES.length - 1)] ?? 1);
       vento = criarEstadoVento(bioma);
       climaEstado = criarEstadoClima(climaTipo);
+      resetarMusica(musica);
 
       tirosJogador = [];
       misseisJogador = [];
@@ -283,7 +291,6 @@ export const asaGameModule: GameModule = {
       bonusResumo = 0;
 
       chefe = null;
-      vidaChefeInicioEtapa = 0;
 
       if (irParaChefe) {
         iniciarDuelo();
@@ -312,7 +319,6 @@ export const asaGameModule: GameModule = {
       combustivelEstado = criarEstadoCombustivel(missaoAtual, cicloAtual, armas.misseis);
       const vidaChefeBase = CHEFE_VIDA[Math.min(missaoAtual - 1, CHEFE_VIDA.length - 1)] + (cicloAtual - 1) * CHEFE_VIDA_POR_CICLO;
       chefe = criarChefe(missao.chefaoTipo, vidaChefeDebug > 0 ? vidaChefeDebug : vidaChefeBase);
-      vidaChefeInicioEtapa = chefe.vida;
       tirosJogador = [];
       misseisJogador = [];
       projetisInimigos = [];
@@ -354,9 +360,7 @@ export const asaGameModule: GameModule = {
         heli = criarHelicoptero(LARGURA / 2, HELI_LINHA_Y);
         heli.invulneravel = 2;
         armadura = criarArmadura();
-        if (chefe) {
-          chefe.vida = vidaChefeInicioEtapa;
-        }
+        // O chefe NUNCA recupera vida: o dano acumulado permanece.
         tirosJogador = [];
         misseisJogador = [];
         projeteisInimigosReset();
@@ -523,6 +527,20 @@ export const asaGameModule: GameModule = {
         tempo += dt;
         tempoEstado += dt;
 
+        // ===== ÁUDIO: trilha, rotor do jogador e motor do chefão =====
+        const emJogo = estado === 'percurso' || estado === 'duelo' || estado === 'explosaoChefe';
+        definirTrilha(musica, estado === 'duelo' || estado === 'explosaoChefe' ? 'duelo' : estado === 'percurso' ? 'acao' : 'nenhuma');
+        const intensidadeRotor = Math.min(
+          1,
+          Math.max(0, (velocidadeRolagem - ROLAGEM_MIN) / (ROLAGEM_MAX - ROLAGEM_MIN))
+        );
+        atualizarMusica(musica, ctx.audio, dt, {
+          rotorLigado: emJogo,
+          motorChefe: estado === 'duelo' && chefe !== null,
+          misseisInimigos: misseisInimigos.length,
+          intensidadeRotor,
+        });
+
         if (estado === 'ficha') {
           if (input.acaoPressionada || tempo >= 2) {
             cenaDecolagem = criarCenaDecolagem(4.2);
@@ -641,9 +659,11 @@ export const asaGameModule: GameModule = {
             heli.cooldown = 0.17;
           }
           if (input.acao2Pressionada) {
-            tentarLancarMissil(armas, misseisJogador, heli.x, heli.y, { valor: heli.cooldownMissil });
-            heli.cooldownMissil = MISSIL_COOLDOWN;
-            ctx.audio.tocar('torpedo');
+            if (tentarLancarMissil(armas, misseisJogador, heli.x, heli.y, { valor: heli.cooldownMissil })) {
+              heli.cooldownMissil = MISSIL_COOLDOWN;
+              // Som de míssil lançado
+              ctx.audio.tocar('torpedo');
+            }
           }
 
           for (let i = tirosJogador.length - 1; i >= 0; i--) {
@@ -947,9 +967,11 @@ export const asaGameModule: GameModule = {
             heli.cooldown = 0.17;
           }
           if (input.acao2Pressionada) {
-            tentarLancarMissil(armas, misseisJogador, heli.x, heli.y, { valor: heli.cooldownMissil });
-            heli.cooldownMissil = MISSIL_COOLDOWN;
-            ctx.audio.tocar('torpedo');
+            if (tentarLancarMissil(armas, misseisJogador, heli.x, heli.y, { valor: heli.cooldownMissil })) {
+              heli.cooldownMissil = MISSIL_COOLDOWN;
+              // Som de míssil lançado
+              ctx.audio.tocar('torpedo');
+            }
           }
 
           for (let i = tirosJogador.length - 1; i >= 0; i--) {
@@ -973,7 +995,6 @@ export const asaGameModule: GameModule = {
             if (mudou === 'mudouEtapa') {
               ctx.audio.tocar('alarme');
               criarTexto(textos, LARGURA / 2, 120, chefe.etapa === 2 ? 'ETAPA 2' : 'ETAPA 3', '#EF4444');
-              vidaChefeInicioEtapa = chefe.vida;
               // Chefes com vento fase: condor etapa 3 solta rajadas
               if (chefe.tipo === 'condor' && chefe.etapa === 3) {
                 vento.ativo = true;
@@ -996,6 +1017,8 @@ export const asaGameModule: GameModule = {
               }
               for (const m of disparo.misseis) {
                 misseisInimigos.push(criarMissilInimigo(m.x, m.y, m.vx, m.vy));
+                // Som de míssil lançado pelo chefão
+                ctx.audio.tocar('torpedo');
               }
               if (disparo.avisoTexto) {
                 criarTexto(textos, LARGURA / 2, 96, disparo.avisoTexto, '#F472B6');
