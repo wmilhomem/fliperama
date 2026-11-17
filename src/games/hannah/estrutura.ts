@@ -91,6 +91,25 @@ export function validarTela(est: EstruturaTela): string[] {
     adj[e.entre[1]].add(e.entre[0]);
   }
 
+  // Elevadores também ligam níveis: qualquer viga que cruza o percurso
+  // vertical do elevador permite desembarque nele.
+  for (const el of def.elevadores ?? []) {
+    const servidas: number[] = [];
+    for (let i = 0; i < n; i++) {
+      if (el.x < girders[i].x - 8 || el.x > girders[i].x2 + 8) continue;
+      const sup = girders[i].yEm(el.x);
+      if (sup >= el.yTop - 6 && sup <= el.yBottom + 6) servidas.push(i);
+    }
+    for (const a of servidas) {
+      for (const bIdx of servidas) {
+        if (a !== bIdx) {
+          adj[a].add(bIdx);
+          adj[bIdx].add(a);
+        }
+      }
+    }
+  }
+
   const alcancado = new Set<number>([inicio]);
   const fila = [inicio];
   while (fila.length) {

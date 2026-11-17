@@ -268,6 +268,31 @@ export function desenharMartelo(g: CanvasRenderingContext2D, x: number, y: numbe
   g.restore();
 }
 
+/**
+ * Martelo em uso: pivô na mão do Zeca, girando de erguido (-2,2 rad)
+ * até a cabeça bater no chão (0 rad) — o golpe completo, não flutua.
+ * (x, y = pés do Zeca · angulo: 0 = cabeça no chão à frente).
+ */
+export function desenharMarteloGolpe(
+  g: CanvasRenderingContext2D,
+  x: number,
+  yPe: number,
+  dir: 1 | -1,
+  angulo: number
+) {
+  g.save();
+  g.translate(x + dir * 6, yPe - 14);
+  g.rotate(dir * angulo);
+  // Cabo de madeira apontando para baixo a partir da mão
+  retangulo(g, -2, -3, 4, 10, '#A16207');
+  retangulo(g, -2, -3, 4, 3, '#CA8A04');
+  // Cabeça de borracha amarela na ponta do cabo (bate na linha dos pés)
+  retangulo(g, -7, 6, 14, 8, '#FACC15');
+  retangulo(g, -7, 6, 14, 2, '#FDE047');
+  retangulo(g, -7, 12, 14, 2, '#CA8A04');
+  g.restore();
+}
+
 /** Chapéu de abas largas. */
 export function desenharChapeu(g: CanvasRenderingContext2D, x: number, y: number, frame: number) {
   const pulso = 1 + Math.sin(frame * 0.3) * 0.06;

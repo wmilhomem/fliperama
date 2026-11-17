@@ -57,7 +57,7 @@ export const TELAS: TelaDef[] = [
       { x: 330, y: 261 },
     ],
     itensBonus: [
-      b('chapeu', 300, 46),
+      b('chapeu', 300, 62),
       b('bolsa', 428, 258),
       b('guarda-chuva', 62, 442),
     ],
@@ -102,7 +102,7 @@ export const TELAS: TelaDef[] = [
       { x: 400, y: 248 },
     ],
     itensBonus: [
-      b('chapeu', 300, 46),
+      b('chapeu', 300, 62),
       b('bolsa', 62, 248),
       b('guarda-chuva', 420, 344),
     ],
@@ -135,8 +135,10 @@ export const TELAS: TelaDef[] = [
     hannah: { x: 225, y: 40 },
     barrilSpawn: { x: 190, y: 40 },
     elevadores: [
-      { x: 85, yTop: 158, yBottom: 480, velocidade: 62, fase: 0 },
-      { x: 395, yTop: 158, yBottom: 480, velocidade: 62, fase: Math.PI },
+      // yTop/yBottom alinhados com as superfícies das vigas 1/2 (150) e do
+      // térreo (505) — o Zeca desembarca exatamente na linha da viga.
+      { x: 85, yTop: 150, yBottom: 505, velocidade: 62, fase: 0 },
+      { x: 395, yTop: 150, yBottom: 505, velocidade: 62, fase: Math.PI },
     ],
     itensBonus: [
       b('chapeu', 60, 282),
@@ -179,7 +181,7 @@ export const TELAS: TelaDef[] = [
       { x: 360, y: 350 },
     ],
     itensBonus: [
-      b('chapeu', 300, 46),
+      b('chapeu', 300, 62),
       b('bolsa', 60, 448),
       b('guarda-chuva', 240, 254),
     ],

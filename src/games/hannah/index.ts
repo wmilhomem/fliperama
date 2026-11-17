@@ -30,6 +30,8 @@ import {
   PONTOS_PULO_2,
   PONTOS_PULO_3,
   PONTOS_VIDA_EXTRA_1,
+  TEMPO_ESCADA_QUEBRADA,
+  TEMPO_ESCADA_QUEBRADA_AVISO,
   TOLERANCIA_ESCADA,
   VELOCIDADE_ESCADA,
   VELOCIDADE_JOGADOR,
@@ -52,10 +54,24 @@ import {
   desenharGrotao,
   desenharHannah,
   desenharMartelo,
+  desenharMarteloGolpe,
   desenharMola,
   desenharTrava,
   desenharZeca,
 } from './personagens';
+import { atualizarMusica, criarMusica, definirTema, type TemaMusica } from './musica';
+import {
+  atualizarClima,
+  CLIMA_POR_TELA,
+  criarClima,
+  desenharAvisoRaio,
+  desenharChuva,
+  desenharFlashRaio,
+  desenharPoeira,
+  desenharRaio,
+  desenharVento,
+  empurraoVento,
+} from './clima';
 import {
   EstruturaTela,
   Segmento,
@@ -76,10 +92,18 @@ interface Jogador {
   onGround: boolean;
   onLadder: boolean;
   ladderId: number | null;
+  /** Trava breve após soltar a escada (evita re-enganche no topo). */
+  escadaDestrave: number;
+  /** Tempo já gasto subindo a escada atual (escadas quebradas cedem). */
+  tempoNaEscada: number;
   facing: 1 | -1;
   walkFrame: number;
   walkTimer: number;
   marteloTimer: number;
+  /** Ângulo do martelo na mão (rad) — -2.2 = acima, 0 = batendo no chão. */
+  marteloAngulo: number;
+  /** Tempo restante do golpe do martelo (segundos). */
+  marteloGolpe: number;
   invencivelTimer: number;
   coyoteTimer: number;
   bufferPulo: number;
@@ -100,6 +124,8 @@ interface Barril {
   escadaId: number | null;
   rotacao: number;
   pulado: boolean;
+  /** Barril alternado: true = corre até o vão das pontas, sem usar escadas. */
+  corre: boolean;
 }
 
 interface BolaFogo {
@@ -269,6 +295,8 @@ export const hannahGameModule: GameModule = {
     let itensBonus: ItemBonus[] = [];
     let particulas: Particula[] = [];
     let barrilTimer = 2;
+    /** Contador para alternar barris: metade desce por escada, metade corre. */
+    let barrisGerados = 0;
     let caixaTimer = 3;
     let proximaTravaAnim = 0;
     let bonusTickTimer = 0;
@@ -278,6 +306,10 @@ export const hannahGameModule: GameModule = {
     let pulosSeguidosTimer = 0;
     let cena: MotorDeCenas | null = null;
     let cenaApos: (() => void) | null = null;
+
+    // Trilha sonora e clima da tela atual
+    const musica = criarMusica();
+    let clima = criarClima('limpo');
 
     function criarJogador(): Jogador {
       return {
@@ -290,10 +322,14 @@ export const hannahGameModule: GameModule = {
         onGround: true,
         onLadder: false,
         ladderId: null,
+        escadaDestrave: 0,
+        tempoNaEscada: 0,
         facing: 1,
         walkFrame: 0,
         walkTimer: 0,
         marteloTimer: 0,
+        marteloAngulo: -2.2,
+        marteloGolpe: 0,
         invencivelTimer: 0,
         coyoteTimer: 0,
         bufferPulo: 0,
@@ -337,8 +373,13 @@ export const hannahGameModule: GameModule = {
       molas = [];
       particulas = [];
       barrilTimer = desafio().barrilIntervalo;
+      barrisGerados = 0;
       caixaTimer = 3;
       bonusTickTimer = 0;
+
+      // Trilha da tela e clima da tela
+      definirTema(musica, `tela${indice + 1}` as TemaMusica);
+      clima = criarClima(CLIMA_POR_TELA[indice] ?? 'limpo');
 
       // Martelos da tela
       martelos = (estrutura.def.martelos ?? []).map((m, i) => ({
@@ -498,6 +539,35 @@ export const hannahGameModule: GameModule = {
         }
       }
 
+      // Clima da tela: chuva, rajadas de vento e relâmpago sempre anunciado
+      // (regra de justiça: círculo + coluna visíveis por 0,9 s antes da queda)
+      const caiuRaio = atualizarClima(clima, dtSeguro, jogador.x + jogador.largura / 2);
+      const rajada = empurraoVento(clima);
+      if (rajada !== 0) {
+        // Vento empurra de leve; nunca enquanto o Zeca está na escada
+        if (!jogador.onLadder) jogador.x += rajada * dtSeguro;
+        for (const b of barris) b.x += rajada * 0.5 * dtSeguro;
+      }
+      if (caiuRaio) {
+        tremor = 1;
+        ctx.audio.tocar('rochaGrande');
+        // Dano apenas na coluna do raio — com aviso, sempre dá para sair
+        if (jogador.invencivelTimer <= 0 &&
+            Math.abs(jogador.x + jogador.largura / 2 - clima.raioX) < 26) {
+          perderVida();
+          return;
+        }
+        // Barris na coluna viram pontos: caos que também premia
+        barris = barris.filter((b) => {
+          if (Math.abs(b.x - clima.raioX) < 26) {
+            ctx.hud.adicionarPontos(200, b.x, b.y - 10, '#FDE68A');
+            contextoParticulas(b.x, b.y, '#FDE047');
+            return false;
+          }
+          return true;
+        });
+      }
+
       moverJogador(dtSeguro, input);
       atualizarBarris(dtSeguro);
       atualizarBolasFogo(dtSeguro);
@@ -530,8 +600,21 @@ export const hannahGameModule: GameModule = {
       const j = jogador;
       const comMartelo = j.marteloTimer > 0;
 
+      // Giro do martelo: do alto (-2,2 rad) até a cabeça bater no chão (0 rad)
+      const anguloAntes = j.marteloAngulo;
+      if (comMartelo) {
+        const fase = (Math.sin(tempoGlobal * 8) + 1) / 2;
+        j.marteloAngulo = -2.2 + fase * 2.2;
+        if (anguloAntes < -0.25 && j.marteloAngulo >= -0.25) {
+          ctx.audio.tocar('batida');
+        }
+      } else {
+        j.marteloAngulo = -2.2;
+      }
+
       j.coyoteTimer = Math.max(0, j.coyoteTimer - dt);
       j.bufferPulo = Math.max(0, j.bufferPulo - dt);
+      j.escadaDestrave = Math.max(0, j.escadaDestrave - dt);
       const pesAntes = j.y + j.altura;
 
       // Prioridade vertical dentro de uma escada
@@ -539,24 +622,67 @@ export const hannahGameModule: GameModule = {
         if (input.cima) {
           j.y -= VELOCIDADE_ESCADA * dt;
           j.walkTimer += dt;
+          j.tempoNaEscada += dt;
         } else if (input.baixo) {
           j.y += VELOCIDADE_ESCADA * dt;
           j.walkTimer += dt;
+          j.tempoNaEscada += dt;
         }
         if (j.walkTimer > 0.12) {
           j.walkTimer = 0;
           j.walkFrame++;
         }
-        // Sair da escada no topo/base
-        const escada = estrutura.escadas.find((e) => e.x === j.x);
-        if (escada) {
-          if (j.y <= escada.yTop + 2 || j.y >= escada.yBottom - 2) {
+        // Escada quebrada cede depois de um tempo em cima dela (aviso antes)
+        const escadaAtual = j.ladderId !== null ? estrutura.escadas[j.ladderId] : null;
+        if (escadaAtual?.quebrada) {
+          const t = j.tempoNaEscada;
+          if (t > TEMPO_ESCADA_QUEBRADA_AVISO && t < TEMPO_ESCADA_QUEBRADA) {
+            // Estalos periódicos durante o aviso (sem metralhar o som)
+            if (Math.floor((t - dt) * 3) < Math.floor(t * 3)) ctx.audio.tocar('batida');
+          }
+          if (t >= TEMPO_ESCADA_QUEBRADA) {
+            // A escada racha: o Zeca desce de um nível e recomeça
+            ctx.audio.tocar('rochaGrande');
+            const escadaQuebrou = escadaAtual;
             j.onLadder = false;
             j.ladderId = null;
+            j.tempoNaEscada = 0;
+            j.escadaDestrave = 0.5;
+            j.y = escadaQuebrou.yBottom - j.altura;
+            j.vy = 0;
+            j.onGround = true;
+            j.quedaOrigem = escadaQuebrou.yBottom;
+          }
+        }
+        // Sair da escada no topo/base — os PÉS pousam exatamente na superfície
+        // da viga (antes o Zeca atravessava a viga de cima e despencava de
+        // volta, o que impedia subir várias escadas).
+        const escada = estrutura.escadas.find((e) => e.x === j.x);
+        if (escada) {
+          const pes = j.y + j.altura;
+          if (input.cima && pes <= escada.yTop + 8) {
+            j.onLadder = false;
+            j.ladderId = null;
+            j.tempoNaEscada = 0;
+            j.escadaDestrave = 0.3;
+            j.y = escada.yTop - j.altura;
+            j.vy = 0;
+            j.onGround = true;
+            j.quedaOrigem = escada.yTop;
+          } else if (input.baixo && pes >= escada.yBottom - 8) {
+            j.onLadder = false;
+            j.ladderId = null;
+            j.tempoNaEscada = 0;
+            j.escadaDestrave = 0.3;
+            j.y = escada.yBottom - j.altura;
+            j.vy = 0;
+            j.onGround = true;
+            j.quedaOrigem = escada.yBottom;
           }
         } else {
           j.onLadder = false;
           j.ladderId = null;
+          j.tempoNaEscada = 0;
         }
       } else {
         // Andar — teclado/D-pad ou arrasto horizontal
@@ -615,17 +741,19 @@ export const hannahGameModule: GameModule = {
         j.vy += GRAVIDADE * dt;
         j.y += j.vy * dt;
 
-        // Agarrar escada (tolerância de 10 px)
-        if (!j.onLadder) {
+        // Agarrar escada (tolerância de 13 px). Escadas quebradas também podem
+        // ser usadas — elas cedem depois de um tempo em cima delas.
+        if (!j.onLadder && j.escadaDestrave <= 0) {
           const pes = j.y + j.altura;
           const escada = estrutura.escadas.find(
-            (e) => !e.quebrada && Math.abs(j.x - e.x) <= TOLERANCIA_ESCADA && pes >= e.yTop - 2 && j.y <= e.yBottom + 4
+            (e) => Math.abs(j.x - e.x) <= TOLERANCIA_ESCADA && pes >= e.yTop - 2 && j.y <= e.yBottom + 4
           );
-          if (escada && (input.cima || input.baixo) && !comMartelo) {
+          if (escada && (input.cima || input.baixo)) {
             j.onLadder = true;
             j.x = escada.x;
             j.ladderId = estrutura.escadas.indexOf(escada);
             j.vy = 0;
+            j.tempoNaEscada = 0;
           }
         }
       }
@@ -717,6 +845,7 @@ export const hannahGameModule: GameModule = {
         barrilTimer = desafio().barrilIntervalo * (0.7 + Math.random() * 0.6);
         const azul = Math.random() < 0.22;
         const spawnG = estrutura.girders[0];
+        barrisGerados += 1;
         barris.push({
           id: Date.now() + Math.floor(Math.random() * 1000),
           x: estrutura.def.barrilSpawn.x,
@@ -729,6 +858,9 @@ export const hannahGameModule: GameModule = {
           escadaId: null,
           rotacao: 0,
           pulado: false,
+          // Alternância: barril ímpar desce por escada, barril par corre até
+          // o vão no fim da viga e despencar de nível em nível.
+          corre: barrisGerados % 2 === 0,
         });
         ctx.audio.tocar('barril');
       }
@@ -773,23 +905,26 @@ export const hannahGameModule: GameModule = {
         if (vigia) {
           const superficie = vigia.yEm(b.x);
           if (b.y + b.radius >= superficie - 2) {
-            // Chance de descer pela escada (topo da escada encosta nesta viga)
             let desceu = false;
-            for (const escada of estrutura.escadas) {
-              if (Math.abs(b.x - escada.x) < 8 && Math.abs(b.y + b.radius - escada.yTop) < 10) {
-                const chance = escada.quebrada ? CHANCE_ESCADA_QUEBRADA : CHANCE_ESCADA_INTEIRA;
-                if (Math.random() < chance) {
-                  b.descendoEscada = true;
-                  b.escadaId = estrutura.escadas.indexOf(escada);
-                  b.x = escada.x;
-                  b.vx = 0;
-                  b.vy = 0;
-                  desceu = true;
-                  if (escada.quebrada) {
-                    ctx.audio.tocar('batida');
-                    tremor = Math.max(tremor, 0.35);
+            // Os barris se alternam: os "corredores" nunca descem por escada —
+            // seguem rolando até o vão no fim da viga e despencam.
+            if (!b.corre) {
+              for (const escada of estrutura.escadas) {
+                if (Math.abs(b.x - escada.x) < 8 && Math.abs(b.y + b.radius - escada.yTop) < 10) {
+                  const chance = escada.quebrada ? CHANCE_ESCADA_QUEBRADA : CHANCE_ESCADA_INTEIRA;
+                  if (Math.random() < chance) {
+                    b.descendoEscada = true;
+                    b.escadaId = estrutura.escadas.indexOf(escada);
+                    b.x = escada.x;
+                    b.vx = 0;
+                    b.vy = 0;
+                    desceu = true;
+                    if (escada.quebrada) {
+                      ctx.audio.tocar('batida');
+                      tremor = Math.max(tremor, 0.35);
+                    }
+                    break;
                   }
-                  break;
                 }
               }
             }
@@ -1209,6 +1344,17 @@ export const hannahGameModule: GameModule = {
       g.fillStyle = grad;
       g.fillRect(0, 0, LARGURA, ALTURA);
 
+      // Céu carregado nas telas de chuva (escurecimento leve, não esconde nada)
+      if (clima.tipo === 'chuva') {
+        g.fillStyle = 'rgba(15, 23, 42, 0.16)';
+        g.fillRect(0, 0, LARGURA, ALTURA);
+      } else if (clima.tipo === 'tempestade') {
+        g.fillStyle = 'rgba(15, 23, 42, 0.30)';
+        g.fillRect(0, 0, LARGURA, ALTURA);
+      }
+      // Poeira de cimento flutuando atrás das vigas (Tela 2)
+      if (clima.tipo === 'garoa') desenharPoeira(g, clima);
+
       // Vigas
       for (const vigia of estrutura.girders) desenharVigia(g, vigia);
 
@@ -1324,9 +1470,15 @@ export const hannahGameModule: GameModule = {
           // piscando: pula o desenho
         } else {
           desenharZeca(g, jogador.x + jogador.largura / 2, jogador.y + jogador.altura, jogador.facing, jogador.walkFrame, jogador.marteloTimer > 0, jogador.onLadder);
-          // Martelo sobre a cabeça enquanto ativo
+          // Martelo em ação: pivô na mão, girando do alto até bater no chão
           if (jogador.marteloTimer > 0) {
-            desenharMartelo(g, jogador.x + jogador.largura / 2 + 8, jogador.y - 4, performance.now() / 150);
+            desenharMarteloGolpe(
+              g,
+              jogador.x + jogador.largura / 2,
+              jogador.y + jogador.altura,
+              jogador.facing,
+              jogador.marteloAngulo
+            );
             if (jogador.marteloTimer <= 2.5 && Math.floor(jogador.marteloTimer * 6) % 2 === 0) {
               g.fillStyle = '#FBBF24';
               g.fillRect(jogador.x + jogador.largura / 2 - 6, jogador.y - 14, 12, 2);
@@ -1334,6 +1486,15 @@ export const hannahGameModule: GameModule = {
           }
         }
       }
+
+      // Clima em primeiro plano: chuva, rajadas e relâmpago sempre anunciado
+      if (clima.tipo === 'garoa' || clima.tipo === 'chuva' || clima.tipo === 'tempestade') {
+        desenharChuva(g, clima, clima.tipo === 'garoa' ? 0.5 : clima.tipo === 'chuva' ? 1 : 1.6);
+      }
+      if (clima.tipo === 'vento' || clima.tipo === 'tempestade') desenharVento(g, clima);
+      desenharAvisoRaio(g, clima);
+      desenharRaio(g, clima);
+      desenharFlashRaio(g, clima);
 
       // HUD
       ctx.hud.desenharHUD(g, LARGURA, ALTURA);
@@ -1452,6 +1613,8 @@ export const hannahGameModule: GameModule = {
         tempoGlobal += dtSeguro;
 
         if (estado === 'TITLE') {
+          definirTema(musica, 'cena');
+          atualizarMusica(musica, ctx.audio, dtSeguro, true);
           if (input.acaoPressionada || input.cimaPressionada) {
             iniciarPartida();
           }
@@ -1459,6 +1622,8 @@ export const hannahGameModule: GameModule = {
         }
 
         if (estado === 'CENA' && cena) {
+          definirTema(musica, 'cena');
+          atualizarMusica(musica, ctx.audio, dtSeguro, true);
           if (cena.atualizar(dtSeguro, input.acaoPressionada)) {
             const depois = cenaApos;
             cena = null;
@@ -1469,10 +1634,13 @@ export const hannahGameModule: GameModule = {
         }
 
         if (estado === 'GAMEOVER') {
+          atualizarMusica(musica, ctx.audio, dtSeguro, false);
           if (input.acaoPressionada) iniciarPartida();
           return;
         }
 
+        // JOGANDO: música silencia durante a morte e volta no respawn
+        atualizarMusica(musica, ctx.audio, dtSeguro, !jogador.morrendo);
         atualizarJogando(dtSeguro, input);
       },
 

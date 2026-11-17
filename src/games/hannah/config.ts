@@ -44,6 +44,10 @@ export function dificuldadeDoCiclo(ciclo: number): Dificuldade {
 export const VIDAS_INICIAIS = 3;
 export const PONTOS_VIDA_EXTRA_1 = 7000;
 
+/** Resolução lógica do jogo (480 x 560). */
+export const LARGURA = 480;
+export const ALTURA = 560;
+
 export const PONTOS_PULO_1 = 100;
 export const PONTOS_PULO_2 = 300;
 export const PONTOS_PULO_3 = 500;
@@ -74,6 +78,11 @@ export const COYOTE_MS = 100;
 export const BUFFER_PULO_MS = 100;
 
 export const TOLERANCIA_ESCADA = 10;
+
+/** Segundos até uma escada quebrada começar a avisar (estalos) com o Zeca nela. */
+export const TEMPO_ESCADA_QUEBRADA_AVISO = 1.2;
+/** Segundos até uma escada quebrada ceder de vez com o Zeca nela. */
+export const TEMPO_ESCADA_QUEBRADA = 1.8;
 
 export const VELOCIDADE_JOGADOR = 150;
 export const VELOCIDADE_ESCADA = 92;
